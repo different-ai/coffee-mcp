@@ -50,4 +50,4 @@ Status is by `requestId`, not email, so nobody can look up someone else's coffee
 | One time or three? | One time, the next open slot | `src/coffee.ts` |
 | Where? | One café, configurable | `COFFEE_PLACE` in `wrangler.jsonc` |
 | Who's notified? | `#coffee-requests` on every confirmed booking | `src/slack.ts` |
-| Sender | `coffee@openworklabs.com` via Resend | `EMAIL_FROM` |
+| Sender | `hello@coffee.openworklabs.com` via Cloudflare Email Service (Resend fallback) | `EMAIL_FROM` |

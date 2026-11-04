@@ -5,8 +5,24 @@ export interface KV {
   delete(key: string): Promise<void>;
 }
 
+/** The slice of the Cloudflare Email Service send binding this app uses. */
+export interface EmailBinding {
+  send(message: {
+    to: string;
+    from: { email: string; name?: string };
+    subject: string;
+    html: string;
+    text: string;
+    cc?: string;
+    replyTo?: string;
+    attachments?: { content: string; filename: string; type: string; disposition: "attachment" | "inline" }[];
+  }): Promise<{ messageId: string }>;
+}
+
 export interface Env {
   COFFEE_KV: KV;
+  /** Cloudflare Email Service. Preferred; Resend is the fallback. */
+  EMAIL?: EmailBinding;
   PUBLIC_URL: string;
   CITY: string;
   TIMEZONE: string;

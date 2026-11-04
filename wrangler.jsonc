@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "coffee-mcp",
+  "account_id": "5abbcca46f2a1399566cab3a8f8bd2c6", // OpenWork Labs (owns the openworklabs.com zone)
   "main": "src/worker.ts",
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -8,6 +9,8 @@
   "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   // No id: Wrangler provisions the namespace on first deploy.
   "kv_namespaces": [{ "binding": "COFFEE_KV" }],
+  // Cloudflare Email Service; coffee.openworklabs.com is onboarded for sending.
+  "send_email": [{ "name": "EMAIL" }],
   "routes": [{ "pattern": "coffee.openworklabs.com", "custom_domain": true }],
   "vars": {
     "PUBLIC_URL": "https://coffee.openworklabs.com",
@@ -16,10 +19,10 @@
     "HOST_NAME": "the OpenWork team",
     "COFFEE_PLACE": "Sightglass Coffee, 270 7th St, San Francisco",
     "COFFEE_PLACE_URL": "https://maps.google.com/?q=Sightglass+Coffee+270+7th+St+San+Francisco",
-    "EMAIL_FROM": "OpenWork Coffee <coffee@openworklabs.com>"
+    "EMAIL_FROM": "OpenWork Coffee <hello@coffee.openworklabs.com>"
   }
   // Secrets (wrangler secret put ...):
-  //   RESEND_API_KEY      sends the confirmation + invite emails
+  //   RESEND_API_KEY      optional fallback if the EMAIL binding is removed
   //   SLACK_WEBHOOK_URL   incoming webhook for #coffee-requests
   //   or SLACK_BOT_TOKEN + SLACK_CHANNEL_ID (chat.postMessage)
   //   HOST_EMAIL          optional, CC'd on every invite

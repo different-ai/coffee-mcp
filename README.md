@@ -31,7 +31,7 @@ so it works without an agent too.
 ```
 agent ──grab_coffee──▶ Worker (/sf) ──▶ 3D card (ui://coffee/sf.html)
                           │
-person puts email ────────┤──▶ confirmation email (Resend)
+person puts email ────────┤──▶ confirmation email (Cloudflare Email Service)
                           │
 person taps confirm ──────┴──▶ next open slot ─▶ invite + .ics ─▶ #coffee-requests
                                                      ▲
@@ -67,18 +67,19 @@ Try it from an agent locally: `claude mcp add --transport http coffee-dev http:/
 
 ## Deploy (Cloudflare)
 
+Live at **https://coffee.openworklabs.com/sf** (Worker `coffee-mcp` in the OpenWork Labs account).
+
 ```bash
 pnpm wrangler login
-pnpm wrangler secret put RESEND_API_KEY      # sends from EMAIL_FROM; verify the domain in Resend
 pnpm wrangler secret put SLACK_WEBHOOK_URL   # see slack-app-manifest.yaml
-pnpm wrangler secret put HOST_EMAIL          # optional: CC'd on every invite
+pnpm wrangler secret put HOST_EMAIL          # optional: CC'd and reply-to on every invite
 pnpm deploy
 ```
 
-`wrangler.jsonc` binds the custom domain `coffee.openworklabs.com` (the
-`openworklabs.com` zone must be in the same Cloudflare account) and provisions
-the `COFFEE_KV` namespace on first deploy. Host name, café, time zone and
-sender live in `vars`.
+- **Domain:** `coffee.openworklabs.com` is a Worker custom domain on the `openworklabs.com` zone.
+- **Storage:** the `COFFEE_KV` namespace was provisioned on first deploy.
+- **Email:** sent with the Cloudflare Email Service `EMAIL` binding from `hello@coffee.openworklabs.com`. The subdomain is onboarded for sending (SPF, DKIM, DMARC on the subdomain only; apex mail is untouched). Remove the binding and set `RESEND_API_KEY` to use Resend instead.
+- **Config:** host name, café, time zone and sender live in `vars`.
 
 ### Slack
 

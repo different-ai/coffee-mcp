@@ -124,6 +124,33 @@ describe("confirmCoffee", () => {
   });
 });
 
+describe("email delivery", () => {
+  it("prefers the Cloudflare Email Service binding and attaches the invite", async () => {
+    const sent: Parameters<NonNullable<ReturnType<typeof makeEnv>["EMAIL"]>["send"]>[0][] = [];
+    const env = makeEnv({
+      RESEND_API_KEY: "re_should_not_be_used",
+      HOST_EMAIL: "host@openworklabs.com",
+      EMAIL: { send: async (m) => (sent.push(m), { messageId: "m1" }) },
+    });
+    const req = await requestCoffee(env, { email: "ada@example.com", source: "web" }, TUESDAY_9AM_PT);
+    await confirmCoffee(env, tokenFrom(req.state === "check_inbox" ? req.devConfirmUrl : undefined), TUESDAY_9AM_PT);
+    expect(sent.map((m) => m.subject)).toEqual([
+      "Confirm your coffee in SF ☕",
+      "Coffee with the OpenWork team: Wednesday, Nov 4 · 10:00 AM PST",
+    ]);
+    expect(sent[0]?.from).toEqual({ name: "OpenWork Coffee", email: "coffee@openworklabs.com" });
+    expect(sent[1]?.cc).toBe("host@openworklabs.com");
+    expect(sent[1]?.attachments?.[0]).toMatchObject({ filename: "coffee.ics", disposition: "attachment" });
+    expect(calls.some((c) => c.url.includes("resend.com"))).toBe(false);
+  });
+
+  it("does not fail the booking when sending throws", async () => {
+    const env = makeEnv({ EMAIL: { send: async () => Promise.reject(new Error("E_SENDER_NOT_VERIFIED")) } });
+    const result = await requestCoffee(env, { email: "a@b.co", source: "web" });
+    expect(result.state).toBe("check_inbox");
+  });
+});
+
 describe("slack message", () => {
   it("escapes user content", () => {
     const msg = bookingMessage({ email: "a@b.co", when: "Wed", place: "Cafe", note: "<!channel> & hi", source: "web", requestId: "r1" });

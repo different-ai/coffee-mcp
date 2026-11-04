@@ -15,31 +15,62 @@ function toBase64(value: string): string {
   return btoa(binary);
 }
 
-/** Sends through Resend. Returns false (and logs) when unconfigured or failing. */
+function parseFrom(from: string): { email: string; name?: string } {
+  const match = /^\s*(.*?)\s*<([^>]+)>\s*$/.exec(from);
+  return match?.[2] ? { name: match[1] || undefined, email: match[2] } : { email: from.trim() };
+}
+
+/**
+ * Sends through the Cloudflare Email Service binding when bound, else Resend.
+ * Returns false (and logs) when unconfigured or failing; never throws.
+ */
 export async function sendEmail(env: Env, email: OutgoingEmail): Promise<boolean> {
-  if (!env.RESEND_API_KEY) {
-    console.log(`[email skipped: no RESEND_API_KEY] to=${email.to} subject=${email.subject}`);
+  try {
+    if (env.EMAIL) {
+      await env.EMAIL.send({
+        to: email.to,
+        cc: email.cc,
+        from: parseFrom(env.EMAIL_FROM),
+        replyTo: env.HOST_EMAIL,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+        attachments: email.attachments?.map((a) => ({
+          content: toBase64(a.content),
+          filename: a.filename,
+          type: a.contentType ?? "application/octet-stream",
+          disposition: "attachment",
+        })),
+      });
+      return true;
+    }
+    if (!env.RESEND_API_KEY) {
+      console.log(`[email skipped: no EMAIL binding or RESEND_API_KEY] to=${email.to} subject=${email.subject}`);
+      return false;
+    }
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from: env.EMAIL_FROM,
+        to: [email.to],
+        cc: email.cc ? [email.cc] : undefined,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+        attachments: email.attachments?.map((a) => ({
+          filename: a.filename,
+          content: toBase64(a.content),
+          content_type: a.contentType,
+        })),
+      }),
+    });
+    if (!res.ok) console.error("resend failed", res.status, await res.text());
+    return res.ok;
+  } catch (error) {
+    console.error("email send failed", error);
     return false;
   }
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: [email.to],
-      cc: email.cc ? [email.cc] : undefined,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
-      attachments: email.attachments?.map((a) => ({
-        filename: a.filename,
-        content: toBase64(a.content),
-        content_type: a.contentType,
-      })),
-    }),
-  });
-  if (!res.ok) console.error("resend failed", res.status, await res.text());
-  return res.ok;
 }
 
 function escHtml(value: string): string {
