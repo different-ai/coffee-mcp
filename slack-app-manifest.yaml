@@ -1,0 +1,21 @@
+# Create the Slack app that posts bookings to #coffee-requests:
+#   1. https://api.slack.com/apps -> Create New App -> From a manifest -> paste this file
+#   2. Install to workspace, pick #coffee-requests when asked for a channel
+#   3. Copy the webhook URL under "Incoming Webhooks", then:
+#        pnpm wrangler secret put SLACK_WEBHOOK_URL
+display_information:
+  name: OpenWork Coffee
+  description: Posts new coffee bookings from coffee.openworklabs.com/sf
+  background_color: "#2a1f1a"
+features:
+  bot_user:
+    display_name: OpenWork Coffee
+    always_online: false
+oauth_config:
+  scopes:
+    bot:
+      - incoming-webhook
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
