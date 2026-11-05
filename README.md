@@ -1,99 +1,92 @@
-# ☕ coffee.openworklabs.com/sf
+# Coffee with OpenWork / SF
 
-Grab a coffee with the OpenWork team in San Francisco, from inside your agent.
+**Hey this is OpenWork. We make some mean coffee. Come get coffee with us.**
 
-Add one URL to Claude Code, Cursor, Codex, OpenWork or any MCP client, then say
-**"grab a coffee with OpenWork."** A small 3D San Francisco café opens right in
-the chat ([MCP Apps](https://github.com/modelcontextprotocol/ext-apps)). Put
-your email address in it, confirm the email, and you get a time, a place and a
-calendar invite. The team gets a post in `#coffee-requests`.
+Live: **https://coffee.openworklabs.com/sf** · Meet us at **700 Alabama St, San Francisco**.
 
-![Booked](docs/booked.png)
+Add one URL to your agent. Tell it your email, and say **“grab a coffee with OpenWork.”** It books and sends an invite. No forms or confirmation clicks required. The optional MCP App shows your booking over a real Gaussian-splat reconstruction of our SF neighborhood.
+
+![The invitation](docs/idle.png)
 
 ## Add it to your agent
 
-No API key, no sign-in. The URL is `https://coffee.openworklabs.com/sf`.
+No API key, no sign-in. URL: `https://coffee.openworklabs.com/sf`.
 
-| Client | How |
+| Client | Setup |
 |---|---|
 | Claude Code | `claude mcp add --transport http coffee https://coffee.openworklabs.com/sf` |
-| Cursor | "Add to Cursor" on the landing page, or `{"mcpServers":{"coffee":{"url":"https://coffee.openworklabs.com/sf"}}}` in `~/.cursor/mcp.json` |
-| Codex | `[mcp_servers.coffee]` + `url = "https://coffee.openworklabs.com/sf"` in `~/.codex/config.toml` |
+| Cursor | Add-to-Cursor button on the landing page, or `{"mcpServers":{"coffee":{"url":"https://coffee.openworklabs.com/sf"}}}` in `~/.cursor/mcp.json` |
+| Codex | `[mcp_servers.coffee]` and `url = "https://coffee.openworklabs.com/sf"` in `~/.codex/config.toml` |
 | VS Code | `code --add-mcp '{"name":"coffee","type":"http","url":"https://coffee.openworklabs.com/sf"}'` |
-| OpenWork | Settings → Connectors → Add custom MCP → paste the URL |
-| Claude.ai / ChatGPT | Settings → Connectors → Add custom connector → paste the URL |
+| OpenWork | Library → Add to library → Connector → Add an MCP → URL → No sign-in |
+| Other MCP clients | Add a remote Streamable HTTP server with the URL above |
 
-Opening the same URL in a browser shows the landing page with the same 3D card,
-so it works without an agent too.
+Opening that same URL in a browser shows the invitation and setup instructions. The standalone web form retains email verification; agents don't need it.
 
-## How it works
+## Two tools, no required UI
 
-```
-agent ──grab_coffee──▶ Worker (/sf) ──▶ 3D card (ui://coffee/sf.html)
-                          │
-person puts email ────────┤──▶ confirmation email (Cloudflare Email Service)
-                          │
-person taps confirm ──────┴──▶ next open slot ─▶ invite + .ics ─▶ #coffee-requests
-                                                     ▲
-                       the card in chat flips to "You're on for coffee" on its own
-```
-
-| Tool | What it does |
+| Tool | Behavior |
 |---|---|
-| `grab_coffee({ email?, note? })` | Shows the 3D card. With an email, sends the confirmation right away. |
-| `coffee_status({ requestId })` | Is it booked yet? Returns the time and place. |
+| `grab_coffee({})` | Returns `ask_email`, opens an empty form, no side effects. The agent asks for an email in chat. |
+| `grab_coffee({ email, note? })` | Immediately reserves the next available configured time and attempts to email a calendar invite. Returns the booking fields and delivery outcome. |
+| `coffee_status({ requestId })` | Returns the reservation, calendar links and invitation-delivery outcome. |
 
-Design choices:
+The agent must only pass an email the user gave for booking coffee. `inviteDelivery: "sent"` means the provider accepted the email, **not** that it reached the inbox. Failed or unknown delivery is shown honestly, with calendar links still available. Repeated calls reuse an existing future booking without emailing again.
 
-- **The email is confirmed before anything is booked**, so nobody can book coffee for someone else's address. The confirm link opens a page with a button; visiting it alone books nothing, so email link scanners can't confirm.
-- **One proposed time**, the next free weekday slot (10:00, 14:00 or 16:00 PT, at least 18 hours out). Two people never get the same slot. "Can't make it?" is a reply to the email.
-- **Rate limits** per email (3 a day) and per IP (20 an hour).
-- **One self-contained HTML file** (Three.js, no external requests) serves as both the MCP App resource and the landing page, so the default MCP Apps CSP is enough. It respects `prefers-reduced-motion`, pauses when off screen, and stacks the card under the scene on phones.
-- Hosts without MCP Apps still work: the tool text tells the agent to ask for the email.
+The view consumes the tool's `structuredContent`. No click, hidden browser workflow or second booking call is needed to fill it. Hosts without MCP Apps still receive all details as text and structured data.
 
-Full experience design: [docs/DESIGN.md](docs/DESIGN.md).
+## Real neighborhood, not a mock
 
-## Develop
+The environment is the public user-created Marble world [Urban Intersection in San Francisco](https://marble.worldlabs.ai/world/65f3661f-de05-44f3-a9b8-7fcaa142d0ec). `app/world.ts` points at its public 150k-splat export and loading-image fallback. No World Labs API credential is included in the browser, Worker or repository.
 
-```bash
+The 3D scene is optional: failure to load it never blocks booking. Reduced-motion stops the camera drift and UI animations. **Mean coffee** reveals **aka good coffee.** on hover or keyboard focus.
+
+Full experience and limitations: [docs/DESIGN.md](docs/DESIGN.md).
+
+## Development and tests
+
+```sh
 pnpm install
-cp .dev.vars.example .dev.vars   # DEV_MODE=1 shows a "Dev: confirm link" instead of emailing
+cp .dev.vars.example .dev.vars
 pnpm dev                         # http://localhost:8787/sf
-pnpm test                        # unit + MCP-over-HTTP + web flow tests
+pnpm test                        # unit + real MCP-over-HTTP and web routing
 pnpm typecheck
+pnpm exec playwright install chromium
+pnpm test:ui                     # real splat + MCP Apps CSP + filled receipt, no clicks
 ```
 
-Try it from an agent locally: `claude mcp add --transport http coffee-dev http://localhost:8787/sf`.
+To use system Chrome for browser tests on macOS:
 
-## Deploy (Cloudflare)
+```sh
+COFFEE_CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" pnpm test:ui
+```
 
-Live at **https://coffee.openworklabs.com/sf** (Worker `coffee-mcp` in the OpenWork Labs account).
+Browser tests use the local Workers email simulator, never real recipients. They implement a small MCP Apps test host with the same restrictive CSP as OpenWork, so a renderer that only works outside chat doesn't pass.
 
-```bash
-pnpm wrangler login
-pnpm wrangler secret put SLACK_WEBHOOK_URL   # see slack-app-manifest.yaml
-pnpm wrangler secret put HOST_EMAIL          # optional: CC'd and reply-to on every invite
+## Deploy on Cloudflare
+
+```sh
+pnpm exec wrangler login
+pnpm exec wrangler secret put SLACK_WEBHOOK_URL
+pnpm exec wrangler secret put HOST_EMAIL     # optional: CC + reply-to
 pnpm deploy
 ```
 
-- **Domain:** `coffee.openworklabs.com` is a Worker custom domain on the `openworklabs.com` zone.
-- **Storage:** the `COFFEE_KV` namespace was provisioned on first deploy.
-- **Email:** sent with the Cloudflare Email Service `EMAIL` binding from `hello@coffee.openworklabs.com`. The subdomain is onboarded for sending (SPF, DKIM, DMARC on the subdomain only; apex mail is untouched). Remove the binding and set `RESEND_API_KEY` to use Resend instead.
-- **Config:** host name, café, time zone and sender live in `vars`.
+The Worker `coffee-mcp` runs in the OpenWork Labs account on `coffee.openworklabs.com`. `COFFEE_KV` is pinned to its production namespace. The `EMAIL` binding sends through Cloudflare Email Service from `hello@coffee.openworklabs.com`; SPF, DKIM and DMARC are on the coffee subdomain, not the apex. Resend remains an optional fallback if the binding is removed.
 
 ### Slack
 
-Bookings post to `#coffee-requests`. Create the app from
-[`slack-app-manifest.yaml`](slack-app-manifest.yaml), install it to
-`#coffee-requests`, and save the webhook as `SLACK_WEBHOOK_URL`. A bot token
-works too: set `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`.
+Create an app from [`slack-app-manifest.yaml`](slack-app-manifest.yaml), install it to `#coffee-requests`, then save its URL as `SLACK_WEBHOOK_URL`. Alternatively set `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID`. Posting an intro manually doesn't configure the Worker's automatic posts.
 
-## Layout
+### Scheduling / abuse limits
 
-```
-app/        the 3D view (Three.js + @modelcontextprotocol/ext-apps), built to dist/app.html
-src/        the Worker: MCP server, booking logic, email, Slack, calendar
-test/       vitest
-```
+Configured weekday slots are 10:00, 14:00 and 16:00 Pacific, at least 18 hours out. This is not connected to a host's live calendar. KV handles sequential reuse and rate-limit damping, **not** transactional concurrency: move reservations into a Durable Object before broad public promotion. Per-email and per-IP limits apply. Protect or disable the public endpoint if abuse occurs.
 
-MIT licensed.
+## Files
+
+- `app/`: the invitation, splat scene, MCP Apps client and setup instructions.
+- `src/`: Cloudflare Worker, MCP tools, reservations, email, Slack and calendar files.
+- `test/`: unit and MCP-over-HTTP tests.
+- `ui/`: browser tests for the real scene and MCP-only/no-click flow.
+
+MIT licensed. Third-party notices: [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).

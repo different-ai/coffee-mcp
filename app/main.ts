@@ -2,6 +2,7 @@ import { App } from "@modelcontextprotocol/ext-apps";
 import { isCoffeeResult, type CoffeeResult } from "../src/shared";
 import { renderInstall } from "./install";
 import { createScene } from "./scene";
+import { WORLD } from "./world";
 
 const $ = <T extends HTMLElement>(sel: string): T => {
   const el = document.querySelector<T>(sel);
@@ -18,8 +19,24 @@ const receipt = $<HTMLElement>("#receipt");
 const receiptBody = $<HTMLDivElement>("#receipt-body");
 const receiptFooter = $<HTMLElement>("#receipt-footer");
 
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const scene = createScene($<HTMLCanvasElement>("#scene"), { reducedMotion });
+const reducedMotion = window.matchMedia(
+  "(prefers-reduced-motion: reduce)",
+).matches;
+const stage = $<HTMLElement>("#stage");
+const status = $<HTMLElement>("#scene-status");
+$<HTMLElement>("#world-photo").style.backgroundImage = `url("${WORLD.image}")`;
+$<HTMLAnchorElement>("#world-credit").href = WORLD.page;
+const scene = createScene($<HTMLCanvasElement>("#scene"), {
+  reducedMotion,
+  onStatus(value) {
+    stage.classList.toggle("scene-ready", value === "ready");
+    status.textContent = {
+      loading: "LOADING THE NEIGHBORHOOD…",
+      ready: "LIVE 3D NEIGHBORHOOD / DRAG TO LOOK AROUND",
+      fallback: "NEIGHBORHOOD PREVIEW / 3D UNAVAILABLE",
+    }[value];
+  },
+});
 
 /** Inside an MCP host we live in an iframe; on coffee.openworklabs.com we're the page. */
 const standalone = window.self === window.top;
@@ -31,7 +48,9 @@ interface Backend {
 }
 
 function toResult(value: unknown): CoffeeResult {
-  return isCoffeeResult(value) ? value : { state: "error", code: "internal", message: "Unexpected response." };
+  return isCoffeeResult(value)
+    ? value
+    : { state: "error", code: "internal", message: "Unexpected response." };
 }
 
 function webBackend(): Backend {
@@ -46,7 +65,9 @@ function webBackend(): Backend {
       return toResult(await res.json());
     },
     async status(requestId) {
-      const res = await fetch(`${base}/api/status?id=${encodeURIComponent(requestId)}`);
+      const res = await fetch(
+        `${base}/api/status?id=${encodeURIComponent(requestId)}`,
+      );
       return toResult(await res.json());
     },
     open(url) {
@@ -58,11 +79,17 @@ function webBackend(): Backend {
 function mcpBackend(app: App): Backend {
   return {
     async request(email) {
-      const res = await app.callServerTool({ name: "grab_coffee", arguments: { email } });
+      const res = await app.callServerTool({
+        name: "grab_coffee",
+        arguments: { email },
+      });
       return toResult(res.structuredContent);
     },
     async status(requestId) {
-      const res = await app.callServerTool({ name: "coffee_status", arguments: { requestId } });
+      const res = await app.callServerTool({
+        name: "coffee_status",
+        arguments: { requestId },
+      });
       return toResult(res.structuredContent);
     },
     open(url) {
@@ -71,8 +98,10 @@ function mcpBackend(app: App): Backend {
   };
 }
 
-let backend: Backend = webBackend();
+let backend: Backend | undefined = standalone ? webBackend() : undefined;
 let pollTimer: number | undefined;
+// Never send to a web endpoint from inside a sandbox while the MCP host connects.
+submit.disabled = !standalone;
 
 function row(label: string, value: string): HTMLDivElement {
   const div = document.createElement("div");
@@ -93,17 +122,22 @@ function line(text: string, className?: string): HTMLParagraphElement {
   return p;
 }
 
-function linkButton(label: string, url: string, ghost = false): HTMLButtonElement {
+function linkButton(
+  label: string,
+  url: string,
+  ghost = false,
+): HTMLButtonElement {
   const b = document.createElement("button");
   b.type = "button";
   b.textContent = label;
   if (ghost) b.className = "ghost";
-  b.addEventListener("click", () => backend.open(url));
+  b.addEventListener("click", () => backend?.open(url));
   return b;
 }
 
 function showReceipt(): void {
   card.classList.add("done");
+  stage.classList.add("has-booking");
   if (receipt.hidden) {
     receipt.hidden = false;
     receipt.classList.remove("printing");
@@ -116,17 +150,29 @@ function render(result: CoffeeResult): void {
   errorEl.hidden = true;
   switch (result.state) {
     case "ask_email": {
-      if (result.email) input.value = result.email;
+      stopPolling();
+      input.value = result.email ?? "";
+      receipt.hidden = true;
+      card.classList.remove("done");
+      stage.classList.remove("has-booking");
+      submit.disabled = !backend;
+      submit.innerHTML =
+        '<span>Come get coffee</span><span aria-hidden="true">↗</span>';
       return;
     }
     case "error": {
-      submit.disabled = false;
-      submit.textContent = "Grab a coffee";
+      receipt.hidden = true;
+      card.classList.remove("done");
+      stage.classList.remove("has-booking");
+      submit.disabled = !backend;
+      submit.innerHTML =
+        '<span>Come get coffee</span><span aria-hidden="true">↗</span>';
       errorEl.textContent = result.message;
       errorEl.hidden = false;
       return;
     }
     case "check_inbox": {
+      input.value = result.email;
       scene?.pour();
       showReceipt();
       receiptBody.replaceChildren(
@@ -136,11 +182,15 @@ function render(result: CoffeeResult): void {
         line("Tap the link we sent and we'll pick a time", "muted dots"),
       );
       receiptFooter.replaceChildren();
-      if (result.devConfirmUrl) receiptFooter.append(linkButton("Dev: confirm link", result.devConfirmUrl, true));
+      if (result.devConfirmUrl)
+        receiptFooter.append(
+          linkButton("Dev: confirm link", result.devConfirmUrl, true),
+        );
       startPolling(result.requestId);
       return;
     }
     case "booked": {
+      input.value = result.email;
       stopPolling();
       scene?.pour();
       scene?.celebrate();
@@ -150,12 +200,21 @@ function render(result: CoffeeResult): void {
         line("You're on for coffee ☕", "big"),
         row("WHEN", result.when),
         row("WHERE", result.place),
+        line(
+          result.inviteDelivery === "sent"
+            ? "Invite sent. See you there."
+            : result.inviteDelivery === "failed"
+              ? "You're booked, but email sending failed. Save the calendar invite below."
+              : "You're booked. Email delivery isn't confirmed. Save the invite below.",
+          "muted",
+        ),
       );
       receiptFooter.replaceChildren(
         linkButton("Add to calendar", result.googleCalendarUrl),
         linkButton(".ics", result.calendarUrl, true),
       );
-      if (result.placeUrl) receiptFooter.append(linkButton("Map", result.placeUrl, true));
+      if (result.placeUrl)
+        receiptFooter.append(linkButton("Map", result.placeUrl, true));
       return;
     }
   }
@@ -173,8 +232,8 @@ function startPolling(requestId: string): void {
   pollTimer = window.setInterval(async () => {
     if (Date.now() - startedAt > 15 * 60_000) return stopPolling();
     try {
-      const result = await backend.status(requestId);
-      if (result.state === "booked") render(result);
+      const result = await backend?.status(requestId);
+      if (result?.state === "booked") render(result);
     } catch {
       // keep waiting
     }
@@ -183,9 +242,14 @@ function startPolling(requestId: string): void {
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!backend) return;
   const email = input.value.trim();
   if (!email || !input.checkValidity()) {
-    render({ state: "error", code: "invalid_email", message: "Put your email address first." });
+    render({
+      state: "error",
+      code: "invalid_email",
+      message: "Put your email address first.",
+    });
     input.focus();
     return;
   }
@@ -194,26 +258,37 @@ form.addEventListener("submit", async (e) => {
   try {
     render(await backend.request(email));
   } catch {
-    render({ state: "error", code: "internal", message: "Couldn't reach the coffee machine. Try again." });
+    render({
+      state: "error",
+      code: "internal",
+      message: "Couldn't reach the coffee machine. Try again.",
+    });
   }
 });
 
 async function connectToHost(): Promise<void> {
-  const app = new App({ name: "coffee-sf", version: "0.1.0" }, {});
+  const app = new App({ name: "coffee-sf", version: "0.2.0" }, {});
   app.ontoolinput = (params) => {
     const email = params.arguments?.email;
     if (typeof email === "string") input.value = email;
   };
   app.ontoolresult = (params) => {
-    if (isCoffeeResult(params.structuredContent)) render(params.structuredContent);
+    if (isCoffeeResult(params.structuredContent))
+      render(params.structuredContent);
   };
   await app.connect();
   backend = mcpBackend(app);
+  submit.disabled = false;
 }
 
 if (standalone) {
   document.body.classList.add("standalone");
-  renderInstall($<HTMLElement>("#install"), `${location.origin}${location.pathname.replace(/\/+$/, "")}`);
+  renderInstall(
+    $<HTMLElement>("#install"),
+    `${location.origin}${location.pathname.replace(/\/+$/, "")}`,
+  );
 } else {
-  connectToHost().catch((err: unknown) => console.warn("MCP host connection failed", err));
+  connectToHost().catch((err: unknown) =>
+    console.warn("MCP host connection failed", err),
+  );
 }

@@ -1,6 +1,6 @@
 {
   "name": "coffee-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "coffee.openworklabs.com/sf: an MCP server (with an MCP App) that books a coffee with the OpenWork team.",
   "license": "MIT",
@@ -11,6 +11,7 @@
     "dev": "pnpm build:app && wrangler dev",
     "test": "pnpm build:app && vitest run",
     "typecheck": "tsc --noEmit",
+    "test:ui": "playwright test",
     "deploy": "pnpm build:app && wrangler deploy"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.6",
     "@types/three": "^0.187.0",
     "three": "^0.187.0",

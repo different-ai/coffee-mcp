@@ -51,19 +51,62 @@ describe("MCP over HTTP at /sf", () => {
     const read = await rpc(env, "resources/read", { uri: VIEW_URI });
     const content = read.result.contents[0];
     expect(content.mimeType).toBe("text/html;profile=mcp-app");
+    expect(content._meta.ui.csp.connectDomains).toEqual(["https://cdn.marble.worldlabs.ai"]);
+    expect(content._meta.ui.csp.resourceDomains).toEqual(["https://cdn.marble.worldlabs.ai"]);
     expect(content.text).toContain("Put your email address");
     expect(content.text).not.toMatch(/<script[^>]+src=/); // everything inlined
   });
 
-  it("grab_coffee without an email shows the card", async () => {
-    const call = await rpc(makeEnv(), "tools/call", { name: "grab_coffee", arguments: {} });
+  it("grab_coffee without an email shows an empty card without side effects", async () => {
+    const sent = vi.fn(async () => ({ messageId: "m1" }));
+    const env = makeEnv({ EMAIL: { send: sent } });
+    const put = vi.spyOn(env.COFFEE_KV, "put");
+    const call = await rpc(env, "tools/call", { name: "grab_coffee", arguments: {} });
     expect(call.result.structuredContent).toEqual({ state: "ask_email" });
+    expect(sent).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
+    expect(call.result.content[0].text).toContain("Ask the user for their email");
   });
 
-  it("grab_coffee with an email sends the confirmation", async () => {
-    const call = await rpc(makeEnv(), "tools/call", { name: "grab_coffee", arguments: { email: "ada@example.com" } });
-    expect(call.result.structuredContent).toMatchObject({ state: "check_inbox", email: "ada@example.com" });
-    expect(call.result.content[0].text).toContain("requestId");
+  it("grab_coffee with an email books immediately and sends one invite, including on repeat calls", async () => {
+    const sent = vi.fn(async (_message: Parameters<NonNullable<ReturnType<typeof makeEnv>["EMAIL"]>["send"]>[0]) => ({ messageId: "m1" }));
+    const env = makeEnv({ EMAIL: { send: sent } });
+    const call = await rpc(env, "tools/call", { name: "grab_coffee", arguments: { email: "ada@example.com" } });
+    expect(call.result.structuredContent).toMatchObject({
+      state: "booked", email: "ada@example.com", inviteDelivery: "sent",
+      place: "OpenWork · 700 Alabama St, San Francisco",
+    });
+    expect(call.result.content[0].text).toContain("No confirmation click is needed");
+    const repeated = await rpc(env, "tools/call", { name: "grab_coffee", arguments: { email: "ada@example.com" } });
+    expect(repeated.result.structuredContent).toEqual(call.result.structuredContent);
+    expect(sent).toHaveBeenCalledTimes(1);
+    expect(sent.mock.calls[0]?.[0]).toMatchObject({ attachments: [expect.objectContaining({ filename: "coffee.ics" })] });
+    const status = await rpc(env, "tools/call", {
+      name: "coffee_status", arguments: { requestId: call.result.structuredContent.requestId },
+    });
+    expect(status.result.structuredContent).toEqual(call.result.structuredContent);
+  });
+
+  it("rejects invalid email without sending anything", async () => {
+    const sent = vi.fn(async (_message: Parameters<NonNullable<ReturnType<typeof makeEnv>["EMAIL"]>["send"]>[0]) => ({ messageId: "m1" }));
+    const call = await rpc(makeEnv({ EMAIL: { send: sent } }), "tools/call", {
+      name: "grab_coffee", arguments: { email: "not-an-email" },
+    });
+    expect(call.result.isError).toBe(true);
+    expect(call.result.structuredContent).toMatchObject({ state: "error", code: "invalid_email" });
+    expect(sent).not.toHaveBeenCalled();
+  });
+
+  it("reports invite failure while keeping the reservation, without falsely claiming it was sent", async () => {
+    const env = makeEnv({ EMAIL: { send: async () => { throw new Error("delivery unavailable"); } } });
+    const call = await rpc(env, "tools/call", { name: "grab_coffee", arguments: { email: "ada@example.com" } });
+    expect(call.result.structuredContent).toMatchObject({ state: "booked", inviteDelivery: "failed" });
+    expect(call.result.content[0].text).toContain("invite could not be sent");
+    expect(call.result.content[0].text).not.toContain("provider accepted");
+    const status = await rpc(env, "tools/call", {
+      name: "coffee_status", arguments: { requestId: call.result.structuredContent.requestId },
+    });
+    expect(status.result.structuredContent).toEqual(call.result.structuredContent);
   });
 });
 
@@ -71,7 +114,10 @@ describe("web routes", () => {
   it("serves the landing page to browsers on the same URL", async () => {
     const res = await worker.fetch(new Request(BASE, { headers: { accept: "text/html" } }), makeEnv());
     expect(res.headers.get("content-type")).toContain("text/html");
-    expect(await res.text()).toContain("Grab a coffee in San");
+    const page = await res.text();
+    expect(page).toContain("Hey this is OpenWork.");
+    expect(page).toContain("700 Alabama St");
+    expect(page).toContain("aka good coffee.");
   });
 
   it("redirects / to /sf", async () => {

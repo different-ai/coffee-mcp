@@ -3,50 +3,140 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Grab a coffee in SF · OpenWork</title>
-    <meta name="description" content="Put your email address and we'll send you a time to grab a coffee with the OpenWork team in San Francisco." />
+    <title>Good company. Mean coffee. — OpenWork SF</title>
+    <meta
+      name="description"
+      content="Hey this is OpenWork. We make some mean coffee. Come get coffee with us at 700 Alabama St, San Francisco."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='54'%3E☕%3C/text%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main id="root">
-      <section class="stage" id="stage">
-        <canvas id="scene" aria-hidden="true"></canvas>
-        <div class="vignette" aria-hidden="true"></div>
-
+      <section
+        class="stage"
+        id="stage"
+        aria-label="Coffee with OpenWork in San Francisco"
+      >
+        <div class="scene-wrap">
+          <div class="world-photo" id="world-photo" aria-hidden="true"></div>
+          <canvas id="scene" aria-hidden="true"></canvas>
+          <div class="vignette" aria-hidden="true"></div>
+        </div>
+        <header class="masthead">
+          <a
+            class="wordmark"
+            href="https://openworklabs.com"
+            target="_blank"
+            rel="noopener"
+            aria-label="OpenWork homepage"
+            ><span class="brand-mark" aria-hidden="true">✳</span> OpenWork</a
+          >
+          <span class="edition">SF / OPEN INVITATION</span>
+        </header>
+        <div class="hero-copy">
+          <p class="hello">Hey this is OpenWork.</p>
+          <h1>
+            We make some<br /><span
+              class="mean"
+              tabindex="0"
+              aria-describedby="mean-definition"
+              >mean coffee<span
+                class="definition"
+                id="mean-definition"
+                role="tooltip"
+                >aka good coffee.</span
+              ></span
+            ><span class="full-stop">.</span>
+          </h1>
+          <p class="invitation">Come get coffee with us.</p>
+          <div class="location">
+            <span class="location-dot" aria-hidden="true"></span
+            ><span
+              >700 Alabama St <span class="city">/ San Francisco</span></span
+            >
+          </div>
+        </div>
         <div class="card" id="card">
-          <p class="eyebrow">coffee.openworklabs.com/sf</p>
-          <h1>Grab a coffee in San&nbsp;Francisco</h1>
-          <p class="lede">Put your email address and we'll send you a time to grab a coffee with the OpenWork team.</p>
+          <div class="card-label">
+            <span>YOUR NEXT COFFEE BREAK</span><span>☕ ON US</span>
+          </div>
           <form id="form" novalidate>
             <label for="email" class="sr-only">Email address</label>
-            <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Put your email address" required />
-            <button type="submit" id="submit">Grab a coffee</button>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="Put your email address"
+              required
+            />
+            <button type="submit" id="submit">
+              <span>Come get coffee</span><span aria-hidden="true">↗</span>
+            </button>
           </form>
+          <p class="form-note">
+            We'll email you a time. No decks. Just coffee.
+          </p>
           <p class="error" id="error" role="alert" hidden></p>
         </div>
-
-        <article class="receipt" id="receipt" hidden aria-live="polite">
+        <article
+          class="receipt"
+          id="receipt"
+          hidden
+          aria-live="polite"
+          aria-label="Your coffee booking"
+        >
           <header>
-            <span>OPENWORK COFFEE</span>
-            <span>SF</span>
+            <span>OPENWORK / COFFEE</span
+            ><span class="ticket-number">SF—001</span>
           </header>
           <div class="rule"></div>
           <div id="receipt-body"></div>
           <div class="rule"></div>
           <footer id="receipt-footer"></footer>
         </article>
+        <footer class="scene-footer">
+          <span class="scene-status" id="scene-status" role="status"
+            >LOADING THE NEIGHBORHOOD…</span
+          >
+          <a id="world-credit" target="_blank" rel="noopener"
+            >WORLD BY WORLD LABS ↗</a
+          >
+        </footer>
       </section>
-
       <section class="install" id="install" hidden>
         <div class="install-inner">
-          <h2>Add it to your agent</h2>
-          <p class="install-lede">One URL. No API key. Then say <em>"grab a coffee with OpenWork."</em></p>
-          <div class="url-row">
-            <code id="mcp-url"></code>
-            <button type="button" class="copy" data-copy-target="mcp-url">Copy</button>
+          <div class="install-heading">
+            <span class="small-index">01 / FOR YOUR AGENT</span>
+            <h2>Coffee is a tool call away.</h2>
           </div>
-          <div class="tabs" role="tablist" id="tabs"></div>
+          <p class="install-lede">
+            One URL. No API key. Tell your agent your email and say
+            <em>“grab a coffee with OpenWork.”</em> No forms, no clicking. This
+            view is just the nice bit.
+          </p>
+          <div class="url-row">
+            <code id="mcp-url"></code
+            ><button type="button" class="copy" data-copy-target="mcp-url">
+              Copy URL ↗
+            </button>
+          </div>
+          <div
+            class="tabs"
+            role="tablist"
+            aria-label="Setup instructions"
+            id="tabs"
+          ></div>
           <div class="panel" id="panel"></div>
+          <div class="page-footer">
+            <span>OPENWORK LABS · SAN FRANCISCO</span
+            ><span>BUILT FOR GOOD CONVERSATIONS.</span>
+          </div>
         </div>
       </section>
     </main>

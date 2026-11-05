@@ -7,8 +7,8 @@
   "compatibility_flags": ["nodejs_compat"],
   // The built MCP App (dist/app.html) is imported by the Worker as a string.
   "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
-  // No id: Wrangler provisions the namespace on first deploy.
-  "kv_namespaces": [{ "binding": "COFFEE_KV" }],
+  // Reuse the production namespace; never accidentally create a new booking store.
+  "kv_namespaces": [{ "binding": "COFFEE_KV", "id": "a5ec05fff0194ce6885c68d879f6748b" }],
   // Cloudflare Email Service; coffee.openworklabs.com is onboarded for sending.
   "send_email": [{ "name": "EMAIL" }],
   "routes": [{ "pattern": "coffee.openworklabs.com", "custom_domain": true }],
@@ -17,8 +17,8 @@
     "CITY": "sf",
     "TIMEZONE": "America/Los_Angeles",
     "HOST_NAME": "the OpenWork team",
-    "COFFEE_PLACE": "Sightglass Coffee, 270 7th St, San Francisco",
-    "COFFEE_PLACE_URL": "https://maps.google.com/?q=Sightglass+Coffee+270+7th+St+San+Francisco",
+    "COFFEE_PLACE": "OpenWork · 700 Alabama St, San Francisco",
+    "COFFEE_PLACE_URL": "https://maps.google.com/?q=700+Alabama+St+San+Francisco",
     "EMAIL_FROM": "OpenWork Coffee <hello@coffee.openworklabs.com>"
   }
   // Secrets (wrangler secret put ...):

@@ -10,18 +10,29 @@ export const VIEW_URI = "ui://coffee/sf.html";
 
 const INSTRUCTIONS = `Book a coffee with the OpenWork team in San Francisco.
 Call grab_coffee when the user wants to meet, grab coffee, or chat with OpenWork in person.
-It shows an interactive card where the user puts their email address. Only pass an email
-if the user gave it to you for this purpose. After they confirm the email we send them a
-time and place; use coffee_status with the requestId to check whether it's booked.`;
+Without an email it shows an empty coffee card: ask the user for their email, then call
+grab_coffee again with it. Only pass an email if the user gave it to you for this purpose.
+With an email it immediately reserves a time and place and attempts to send a calendar
+invite to the user and configured host. No email confirmation or UI click is required;
+the card visualizes the result. Check inviteDelivery before saying the invite was sent:
+"sent" means accepted by the email provider, "failed" means it could not be sent, and
+"unknown" means the send outcome isn't known. A future booking for the same email is
+reused without another invite. Use coffee_status with the requestId to retrieve it.`;
 
 function describe(result: CoffeeResult): string {
   switch (result.state) {
     case "ask_email":
-      return "Showing the coffee card. The user can put their email address in it. If the card isn't visible in this client, ask the user for their email and call grab_coffee again with it.";
+      return "Showing an empty coffee card. Ask the user for their email address, then call grab_coffee again with that email to book directly and send the invite. No confirmation click is needed.";
     case "check_inbox":
       return `Coffee requested. We emailed ${result.email} a confirmation link; after they tap it, they get a time and a calendar invite. requestId: ${result.requestId}`;
     case "booked":
-      return `Coffee booked for ${result.when} at ${result.place}. The invite went to ${result.email}. requestId: ${result.requestId}`;
+      return `Coffee booked for ${result.when} at ${result.place} for ${result.email}. ${
+        result.inviteDelivery === "sent"
+          ? "The email provider accepted the calendar invite."
+          : result.inviteDelivery === "failed"
+            ? "The invite could not be sent; the booking is reserved. Use the calendar links to add it."
+            : "The invite send outcome is unknown; the booking is reserved. Use the calendar links to add it."
+      } No confirmation click is needed. requestId: ${result.requestId}`;
     case "error":
       return result.message;
   }
@@ -37,7 +48,7 @@ function toToolResult(result: CoffeeResult): CallToolResult {
 
 export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
   const server = new McpServer(
-    { name: "coffee-sf", title: "Coffee in SF · OpenWork", version: "0.1.0" },
+    { name: "coffee-sf", title: "Coffee in SF · OpenWork", version: "0.2.0" },
     { instructions: INSTRUCTIONS },
   );
 
@@ -47,19 +58,19 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
     {
       title: "Grab a coffee in SF",
       description:
-        "Book a coffee with the OpenWork team in San Francisco. Shows an interactive card where the user puts their email address; we email them a time and place.",
+        "Book a coffee with the OpenWork team in San Francisco. Without email, shows an empty card: ask the user for their email and call again. Only pass an email the user gave for this purpose. With email, immediately reserve a time and place and attempt to email a calendar invite to the user and configured host, without confirmation clicks. The card visualizes the booking; check inviteDelivery for send failures. Reuses an existing future booking without sending another invite.",
       inputSchema: z.object({
         email: z
           .string()
           .optional()
-          .describe("The user's email. Only include it if the user gave it to you for this; otherwise the card asks for it."),
+          .describe("The user's email. Only include it if the user gave it for booking coffee; this immediately books and attempts to send an invite. Otherwise ask the user for it."),
         note: z.string().max(280).optional().describe("Optional note for the team, e.g. what they'd like to chat about."),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       _meta: { ui: { resourceUri: VIEW_URI } },
     },
     async ({ email, note }) => {
-      if (!email) return toToolResult({ state: "ask_email" });
+      if (email === undefined) return toToolResult({ state: "ask_email" });
       return toToolResult(await requestCoffee(env, { email, note, source: "mcp", ip: ctx.ip }));
     },
   );
@@ -69,7 +80,7 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
     "coffee_status",
     {
       title: "Check a coffee booking",
-      description: "Check whether a coffee request is confirmed, and get its time and place.",
+      description: "Retrieve a coffee booking's time, place, calendar links and inviteDelivery send outcome, or the status of a legacy web confirmation request.",
       inputSchema: z.object({ requestId: z.string().describe("The requestId returned by grab_coffee.") }),
       annotations: { readOnlyHint: true, openWorldHint: false },
       _meta: { ui: { resourceUri: VIEW_URI } },
@@ -81,14 +92,22 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
     server,
     "Coffee in SF",
     VIEW_URI,
-    { description: "A 3D San Francisco café where you put your email address to grab a coffee." },
+    { description: "A 3D San Francisco coffee card visualizing the booking returned by grab_coffee or coffee_status." },
     async () => ({
       contents: [
         {
           uri: VIEW_URI,
           mimeType: RESOURCE_MIME_TYPE,
           text: appHtml,
-          _meta: { ui: { prefersBorder: false } },
+          _meta: {
+            ui: {
+              prefersBorder: false,
+              csp: {
+                connectDomains: ["https://cdn.marble.worldlabs.ai"],
+                resourceDomains: ["https://cdn.marble.worldlabs.ai"],
+              },
+            },
+          },
         },
       ],
     }),

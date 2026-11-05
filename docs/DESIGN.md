@@ -1,53 +1,49 @@
-# coffee.openworklabs.com/sf: experience design
+# Coffee at OpenWork / SF
 
-**In one sentence:** you add one URL to your agent, say "grab coffee with
-OpenWork", a small 3D San Francisco coffee scene opens right in the chat and
-asks you to put your email address, and a few minutes later you get an email
-with a time and place.
+## The invitation
 
-## 1. Adding it (under 30 seconds)
+> Hey this is OpenWork.
+> We make some mean coffee.
+> Come get coffee with us.
 
-- One URL, `https://coffee.openworklabs.com/sf`. No API key, no sign-in.
-- In a browser, the same URL is the landing page: the 3D scene, the "Put your
-  email address" box, and one-click install for Claude Code, Cursor, Codex,
-  VS Code, OpenWork, Claude.ai and ChatGPT.
-- Browsers get HTML and MCP clients get MCP from the same path, so the URL
-  stays exactly `coffee.openworklabs.com/sf`. `/sf` leaves room for `/nyc`.
+Hover or keyboard-focus **mean coffee** to reveal **aka good coffee.**
 
-## 2. In the chat
+**Meet at OpenWork · 700 Alabama St, San Francisco.**
 
-1. The user says "get me coffee with the OpenWork team". The agent calls `grab_coffee`.
-2. If the agent already has the email (and the user gave it for this), it's filled in.
-3. The 3D card opens (MCP Apps, `ui://coffee/sf.html`): dusk over the Golden
-   Gate, fog rolling through the towers, an empty cup on a café table, one
-   field ("Put your email address") and one button (**Grab a coffee**).
-4. Submit: coffee pours into the cup, steam rises, and a paper receipt prints:
-   *"Check your inbox."*
-5. The user confirms the email, which stops strangers booking coffee for
-   someone else's address.
-6. They get an email with the time, the café, a calendar invite and "can't
-   make it? reply".
-7. Back in the chat the receipt flips to the confirmed time with "Add to
-   calendar", and the camera eases toward the cup.
+## Agent first, UI optional
 
-Clients without MCP Apps still work in text: the agent asks for the email and
-the reply says "check your inbox".
+`grab_coffee({})` returns `ask_email` and opens the empty email form. It does not book or email anything. The agent asks for an email in the conversation; the person may also type it into the card.
 
-## 3. Tools
+`grab_coffee({ email, note? })` immediately reserves the next available configured slot and attempts to send the invitation. No UI click or email confirmation is needed. The response includes all booking fields and `inviteDelivery`. A repeated call for the same email reuses its future booking without sending another invite.
 
-| Tool | What it does |
-|---|---|
-| `grab_coffee({ email?, note? })` | Opens the 3D card, or sends the request right away with an email |
-| `coffee_status({ requestId })` | "When's my coffee?" Returns the time and place once booked |
+The UI is a projection of the tool result—not a step in the workflow. On `booked`, the email input is populated and a filled paper ticket replaces the form. The date, address and calendar links all come from `structuredContent`; the app never makes a second booking just to animate it.
 
-Status is by `requestId`, not email, so nobody can look up someone else's coffee.
+`coffee_status({ requestId })` returns the existing booking. Agent and card distinguish provider-accepted, failed and unknown delivery; a reservation is never presented as proof of inbox delivery.
 
-## 4. Decisions made for the prototype (easy to change)
+The standalone web form retains email verification. Confirming on GET is forbidden so link scanners cannot reserve a time. MCP clients do not use that path.
 
-| Question | Prototype default | Where to change |
-|---|---|---|
-| Whose calendar decides? | Fixed weekday slots, no double booking | `src/schedule.ts` (swap in Google Calendar free/busy) |
-| One time or three? | One time, the next open slot | `src/coffee.ts` |
-| Where? | One café, configurable | `COFFEE_PLACE` in `wrangler.jsonc` |
-| Who's notified? | `#coffee-requests` on every confirmed booking | `src/slack.ts` |
-| Sender | `hello@coffee.openworklabs.com` via Cloudflare Email Service (Resend fallback) | `EMAIL_FROM` |
+## Art direction
+
+An invitation pinned to the neighborhood, not a SaaS signup screen:
+
+- Full-bleed photographic Gaussian-splat street, with slow camera drift and optional drag-to-look.
+- Oversized sans-serif opening and italic serif **mean coffee**.
+- Warm paper, ink green-black, vermilion accents; sharp paper form and lightly crooked printed ticket.
+- Small monospace folio, address and scene credits.
+- No modal, wizard, gradient glass or required interaction with the 3D scene.
+- On phones, readable type and a stacked email/button form; reduced-motion disables drift and UI animations.
+
+## The world
+
+The scene is the user's public Marble world, **Urban Intersection in San Francisco**:
+https://marble.worldlabs.ai/world/65f3661f-de05-44f3-a9b8-7fcaa142d0ec
+
+`app/world.ts` holds its public 150k-splat export URL, source-image fallback and scale metadata. No World Labs API key is required at runtime or stored in this repository. The source image is only a loading/error fallback; “LIVE 3D” appears only after the real Gaussian asset is ready.
+
+MCP Apps declare only the World Labs CDN origin in their CSP. Do not weaken the host sandbox or enable eval to render the scene.
+
+## Scheduling limitations
+
+Slots are fixed weekdays at 10:00, 14:00 and 16:00 Pacific, at least 18 hours out. They are **not** read from anyone's Google Calendar. Current storage is eventually-consistent KV: sequential duplicate calls are idempotent, but concurrent booking requests are not transactionally locked. Before a wider launch, move slot reservations into a Durable Object or transactional store.
+
+Emails use Cloudflare Email Service, with optional Resend fallback. Slack integration needs a webhook or bot token configured separately. Do not claim Slack delivery until configured and verified.

@@ -24,6 +24,8 @@ const StoredRequestSchema = z.object({
   createdAt: z.string(),
   start: z.string().optional(),
   end: z.string().optional(),
+  confirmationDelivery: z.enum(["sent", "failed"]).optional(),
+  inviteDelivery: z.enum(["sent", "failed", "unknown"]).optional(),
 });
 type StoredRequest = z.infer<typeof StoredRequestSchema>;
 
@@ -90,10 +92,19 @@ function bookedResult(env: Env, req: StoredRequest): CoffeeResult {
     placeUrl: env.COFFEE_PLACE_URL,
     calendarUrl: `${publicBase(env)}/ics?id=${req.id}`,
     googleCalendarUrl: googleCalendarUrl(event),
+    inviteDelivery: req.inviteDelivery ?? "unknown",
   };
 }
 
 function checkInbox(env: Env, req: StoredRequest): CoffeeResult {
+  if (req.confirmationDelivery === "failed") {
+    return {
+      state: "error",
+      code: "email_delivery_failed",
+      message: "We couldn't send the confirmation email. No coffee has been booked. Try again later.",
+      requestId: req.id,
+    };
+  }
   return {
     state: "check_inbox",
     email: req.email,
@@ -128,12 +139,12 @@ export async function requestCoffee(
   }
 
   if (!(await allow(kv, `rl:email:${email}`, LIMITS.perEmailPerDay, DAY))) {
-    return { state: "error", code: "rate_limited", message: "We already sent a few emails to that address today. Check your inbox." };
+    return { state: "error", code: "rate_limited", message: "Too many coffee requests for that address today. Try again tomorrow." };
   }
 
   const req: StoredRequest =
     existing?.status === "pending"
-      ? { ...existing, note: input.note ?? existing.note }
+      ? { ...existing, note: input.note?.slice(0, 280) ?? existing.note, source: input.source }
       : {
           id: crypto.randomUUID(),
           email,
@@ -147,8 +158,11 @@ export async function requestCoffee(
   await saveRequest(kv, req);
   await kv.put(`token:${req.token}`, req.id, { expirationTtl: 7 * DAY });
   await kv.put(`email:${email}`, req.id, { expirationTtl: 90 * DAY });
-  await sendEmail(env, confirmationEmail(email, confirmUrl(env, req.token), env.HOST_NAME));
+  if (input.source === "mcp") return (await bookRequest(env, req, now)).result;
 
+  const sent = await sendEmail(env, confirmationEmail(email, confirmUrl(env, req.token), env.HOST_NAME));
+  req.confirmationDelivery = sent ? "sent" : "failed";
+  await saveRequest(kv, req);
   return checkInbox(env, req);
 }
 
@@ -167,7 +181,17 @@ export async function confirmCoffee(
     };
   }
   if (req.status === "booked") return { result: bookedResult(env, req), slack: "not_sent" };
+  return bookRequest(env, req, now);
+}
 
+// Sequential retries reuse the stored booking. KV read/write is not atomic:
+// concurrent requests can still compete for a slot or send duplicate invites.
+async function bookRequest(
+  env: Env,
+  req: StoredRequest,
+  now: Date,
+): Promise<{ result: CoffeeResult; slack: "sent" | "skipped" | "failed" | "not_sent" }> {
+  const kv = env.COFFEE_KV;
   const slot = await proposeSlot(now, env.TIMEZONE, async (iso) => (await kv.get(`slot:${iso}`)) !== null);
   await kv.put(`slot:${slot.start.toISOString()}`, req.id, { expirationTtl: 60 * DAY });
 
@@ -176,13 +200,14 @@ export async function confirmCoffee(
     status: "booked",
     start: slot.start.toISOString(),
     end: slot.end.toISOString(),
+    inviteDelivery: "unknown",
   };
   await saveRequest(kv, booked);
 
   const result = bookedResult(env, booked);
   const event = calendarEvent(env, booked);
   if (result.state === "booked" && event) {
-    await sendEmail(
+    const sent = await sendEmail(
       env,
       inviteEmail({
         to: booked.email,
@@ -195,6 +220,8 @@ export async function confirmCoffee(
         ics: buildIcs(event, now),
       }),
     );
+    booked.inviteDelivery = sent ? "sent" : "failed";
+    await saveRequest(kv, booked);
     const slack = await notifySlack(env, {
       email: booked.email,
       when: result.when,
@@ -203,7 +230,7 @@ export async function confirmCoffee(
       source: booked.source,
       requestId: booked.id,
     });
-    return { result, slack };
+    return { result: bookedResult(env, booked), slack };
   }
   return { result, slack: "not_sent" };
 }
