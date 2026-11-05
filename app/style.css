@@ -43,7 +43,7 @@ button {
   isolation: isolate;
   height: 700px;
   overflow: hidden;
-  background: #545d52;
+  background: #edf0e8;
 }
 body.standalone .stage {
   height: calc(100svh - 61px);
@@ -69,7 +69,6 @@ body.standalone .stage {
 #scene {
   display: block;
   opacity: 0;
-  transition: opacity 0.8s ease;
   cursor: grab;
   touch-action: pan-y;
 }
@@ -82,10 +81,10 @@ body.standalone .stage {
 .vignette {
   pointer-events: none;
   background: linear-gradient(
-    #14201835,
-    transparent 28%,
-    transparent 60%,
-    #14201840
+    #edf0e835,
+    transparent 25%,
+    transparent 70%,
+    #edf0e835
   );
 }
 .masthead {
@@ -93,9 +92,8 @@ body.standalone .stage {
   align-items: center;
   justify-content: space-between;
   padding: 26px 32px;
-  color: #fff;
+  color: #46503f;
   font-size: 12px;
-  text-shadow: 0 1px 8px #0004;
 }
 .wordmark {
   text-decoration: none;
@@ -232,8 +230,7 @@ input[type="email"]:focus {
   display: flex;
   justify-content: space-between;
   gap: 14px;
-  color: #fff;
-  text-shadow: 0 1px 6px #0005;
+  color: #697560;
   font-size: 10px;
   opacity: 0.7;
 }

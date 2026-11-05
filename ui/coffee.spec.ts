@@ -80,7 +80,7 @@ async function host(page: Page, request: APIRequestContext, result: unknown) {
   return page.frameLocator("iframe");
 }
 
-test("the actual World Labs splat renders under MCP Apps CSP; empty call needs no interaction", async ({
+test("the street skeleton and real photo crops render under MCP Apps CSP; empty call needs no interaction", async ({
   page,
   request,
 }) => {

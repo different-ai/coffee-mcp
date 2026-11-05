@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import { createGaussianWorld, type GaussianWorld } from "./gaussian";
-import { WORLD } from "./world";
+import { createStreetWorld, type StreetWorld } from "./street";
 
 export interface CoffeeScene {
   pour(): void;
@@ -8,7 +7,7 @@ export interface CoffeeScene {
   dispose(): void;
 }
 
-/** A real Gaussian-splat world, not a video or a flat image. */
+/** Reconstruction-derived street wireframe with world-anchored source-image crops. */
 export function createScene(
   canvas: HTMLCanvasElement,
   opts: {
@@ -20,7 +19,7 @@ export function createScene(
   try {
     renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: false,
+      antialias: true,
       alpha: true,
     });
   } catch {
@@ -30,27 +29,27 @@ export function createScene(
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color("#edf0e8");
+  scene.fog = new THREE.Fog("#edf0e8", 25, 120);
   const camera = new THREE.PerspectiveCamera(65, 1, 0.05, 300);
   opts.onStatus?.("loading");
   // Pure JS decoding/sorting: MCP sandboxes need neither WASM nor unsafe-eval.
-  let world: GaussianWorld | undefined;
+  let world: StreetWorld | undefined;
   const viewport = new THREE.Vector2();
 
   let loaded = false;
+  let presented = false;
   let disposed = false;
   const fallbackTimer = window.setTimeout(() => {
     if (!loaded) opts.onStatus?.("fallback");
   }, 15000);
-  createGaussianWorld(WORLD.splat)
+  createStreetWorld()
     .then((asset) => {
       if (disposed) return asset.dispose();
       world = asset;
-      asset.object.quaternion.set(1, 0, 0, 0);
-      asset.object.scale.setScalar(WORLD.metricScale);
       scene.add(asset.object);
       loaded = true;
       window.clearTimeout(fallbackTimer);
-      opts.onStatus?.("ready");
     })
     .catch((error: unknown) => {
       console.warn("Splat scene unavailable; using the source image", error);
@@ -132,6 +131,10 @@ export function createScene(
       renderer.getDrawingBufferSize(viewport);
       world?.update(camera, viewport);
       renderer.render(scene, camera);
+      if (loaded && !presented) {
+        presented = true;
+        opts.onStatus?.("ready");
+      }
     } catch (error) {
       renderer.setAnimationLoop(null);
       opts.onStatus?.("fallback");

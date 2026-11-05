@@ -4,7 +4,7 @@
 
 Live: **https://coffee.openworklabs.com/sf** · Meet us at **700 Alabama St, San Francisco**.
 
-Add one URL to your agent. Tell it your email, and say **“grab a coffee with OpenWork.”** It books and sends an invite. No forms or confirmation clicks required. The optional MCP App shows your booking over a real Gaussian-splat reconstruction of our SF neighborhood.
+Add one URL to your agent. Tell it your email, and say **“grab a coffee with OpenWork.”** It books and sends an invite. No forms or confirmation clicks required. The optional MCP App shows your booking over a light street wireframe derived from the SF reconstruction, with floating crops of the actual source image.
 
 ![The invitation](docs/idle.png)
 
@@ -37,7 +37,7 @@ The view consumes the tool's `structuredContent`. No click, hidden browser workf
 
 ## Real neighborhood, not a mock
 
-The environment is the public user-created Marble world [Urban Intersection in San Francisco](https://marble.worldlabs.ai/world/65f3661f-de05-44f3-a9b8-7fcaa142d0ec). `app/world.ts` points at its public 150k-splat export and loading-image fallback. No World Labs API credential is included in the browser, Worker or repository.
+The environment comes from the public user-created Marble world [Urban Intersection in San Francisco](https://marble.worldlabs.ai/world/65f3661f-de05-44f3-a9b8-7fcaa142d0ec). `app/world.ts` points at its public 150k-splat export and source image. `app/street.ts` derives an approximate wireframe from adjacent depth samples and places three crops of that single source image in 3D. These are not three separate photographs, and the wireframe is not a surveyed building mesh. Google Maps source attribution remains visible. No World Labs API credential is included in the browser, Worker or repository.
 
 The 3D scene is optional: failure to load it never blocks booking. Reduced-motion stops the camera drift and UI animations. **Mean coffee** reveals **aka good coffee.** on hover or keyboard focus.
 
