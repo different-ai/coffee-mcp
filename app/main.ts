@@ -31,9 +31,9 @@ const scene = createScene($<HTMLCanvasElement>("#scene"), {
   onStatus(value) {
     stage.classList.toggle("scene-ready", value === "ready");
     status.textContent = {
-      loading: "LOADING THE NEIGHBORHOOD…",
-      ready: "LIVE 3D NEIGHBORHOOD / DRAG TO LOOK AROUND",
-      fallback: "NEIGHBORHOOD PREVIEW / 3D UNAVAILABLE",
+      loading: "Loading neighborhood…",
+      ready: "3D scene · Drag to look around",
+      fallback: "Neighborhood preview",
     }[value];
   },
 });
@@ -156,8 +156,7 @@ function render(result: CoffeeResult): void {
       card.classList.remove("done");
       stage.classList.remove("has-booking");
       submit.disabled = !backend;
-      submit.innerHTML =
-        '<span>Come get coffee</span><span aria-hidden="true">↗</span>';
+      submit.textContent = "Get coffee";
       return;
     }
     case "error": {
@@ -165,8 +164,7 @@ function render(result: CoffeeResult): void {
       card.classList.remove("done");
       stage.classList.remove("has-booking");
       submit.disabled = !backend;
-      submit.innerHTML =
-        '<span>Come get coffee</span><span aria-hidden="true">↗</span>';
+      submit.textContent = "Get coffee";
       errorEl.textContent = result.message;
       errorEl.hidden = false;
       return;
@@ -196,10 +194,10 @@ function render(result: CoffeeResult): void {
       scene?.celebrate();
       showReceipt();
       receiptBody.replaceChildren(
-        row("FOR", result.email),
-        line("You're on for coffee ☕", "big"),
-        row("WHEN", result.when),
-        row("WHERE", result.place),
+        line("You're on for coffee.", "big"),
+        row("For", result.email),
+        row("When", result.when),
+        row("Where", result.place),
         line(
           result.inviteDelivery === "sent"
             ? "Invite sent. See you there."

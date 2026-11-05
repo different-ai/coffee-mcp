@@ -16,7 +16,7 @@ Hover or keyboard-focus **mean coffee** to reveal **aka good coffee.**
 
 `grab_coffee({ email, note? })` immediately reserves the next available configured slot and attempts to send the invitation. No UI click or email confirmation is needed. The response includes all booking fields and `inviteDelivery`. A repeated call for the same email reuses its future booking without sending another invite.
 
-The UI is a projection of the tool result—not a step in the workflow. On `booked`, the email input is populated and a filled paper ticket replaces the form. The date, address and calendar links all come from `structuredContent`; the app never makes a second booking just to animate it.
+The UI is a projection of the tool result—not a step in the workflow. On `booked`, the email input is populated and a simple booking panel replaces the form. The date, address and calendar links all come from `structuredContent`; the app never makes a second booking just to animate it.
 
 `coffee_status({ requestId })` returns the existing booking. Agent and card distinguish provider-accepted, failed and unknown delivery; a reservation is never presented as proof of inbox delivery.
 
@@ -24,14 +24,14 @@ The standalone web form retains email verification. Confirming on GET is forbidd
 
 ## Art direction
 
-An invitation pinned to the neighborhood, not a SaaS signup screen:
+A small utility over the real neighborhood, not a marketing landing page:
 
-- Full-bleed photographic Gaussian-splat street, with slow camera drift and optional drag-to-look.
-- Oversized sans-serif opening and italic serif **mean coffee**.
-- Warm paper, ink green-black, vermilion accents; sharp paper form and lightly crooked printed ticket.
-- Small monospace folio, address and scene credits.
-- No modal, wizard, gradient glass or required interaction with the 3D scene.
-- On phones, readable type and a stacked email/button form; reduced-motion disables drift and UI animations.
+- Full-bleed Gaussian-splat street, with slow drift and optional drag-to-look.
+- Small OpenWork header. One compact, bottom-centered panel holds the invitation, address and email field.
+- System sans-serif, restrained green/gray, soft off-white panel. No oversized headings, badges, italics, stamps or faux paper receipt.
+- The booked state uses the same compact panel with plain date, address and calendar buttons.
+- Setup instructions are collapsed behind one “Add to your agent” row, not a second landing-page section.
+- On phones, the field and button stack. Reduced-motion disables camera drift and transitions.
 
 ## The world
 

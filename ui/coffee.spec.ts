@@ -98,7 +98,7 @@ test("the actual World Labs splat renders under MCP Apps CSP; empty call needs n
     timeout: 40000,
   });
   await expect(frame.locator("#scene-status")).toContainText(
-    "LIVE 3D NEIGHBORHOOD",
+    "3D scene · Drag to look around",
   );
   expect(errors).toEqual([]);
   await page.screenshot({ path: "docs/mcp-empty.png" });

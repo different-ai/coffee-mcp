@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Good company. Mean coffee. — OpenWork SF</title>
+    <title>Coffee with OpenWork</title>
     <meta
       name="description"
-      content="Hey this is OpenWork. We make some mean coffee. Come get coffee with us at 700 Alabama St, San Francisco."
+      content="Come get coffee with OpenWork at 700 Alabama St, San Francisco."
     />
     <link
       rel="icon"
@@ -33,37 +33,24 @@
             target="_blank"
             rel="noopener"
             aria-label="OpenWork homepage"
-            ><span class="brand-mark" aria-hidden="true">✳</span> OpenWork</a
+            >OpenWork</a
           >
-          <span class="edition">SF / OPEN INVITATION</span>
+          <span>San Francisco</span>
         </header>
-        <div class="hero-copy">
-          <p class="hello">Hey this is OpenWork.</p>
-          <h1>
-            We make some<br /><span
-              class="mean"
-              tabindex="0"
-              aria-describedby="mean-definition"
+        <div class="card" id="card">
+          <h1>Hey this is OpenWork.</h1>
+          <p class="invitation">
+            We make some
+            <span class="mean" tabindex="0" aria-describedby="mean-definition"
               >mean coffee<span
                 class="definition"
                 id="mean-definition"
                 role="tooltip"
                 >aka good coffee.</span
               ></span
-            ><span class="full-stop">.</span>
-          </h1>
-          <p class="invitation">Come get coffee with us.</p>
-          <div class="location">
-            <span class="location-dot" aria-hidden="true"></span
-            ><span
-              >700 Alabama St <span class="city">/ San Francisco</span></span
-            >
-          </div>
-        </div>
-        <div class="card" id="card">
-          <div class="card-label">
-            <span>YOUR NEXT COFFEE BREAK</span><span>☕ ON US</span>
-          </div>
+            >.<br />Come get coffee with us.
+          </p>
+          <p class="location">700 Alabama St, San Francisco</p>
           <form id="form" novalidate>
             <label for="email" class="sr-only">Email address</label>
             <input
@@ -75,13 +62,9 @@
               placeholder="Put your email address"
               required
             />
-            <button type="submit" id="submit">
-              <span>Come get coffee</span><span aria-hidden="true">↗</span>
-            </button>
+            <button type="submit" id="submit">Get coffee</button>
           </form>
-          <p class="form-note">
-            We'll email you a time. No decks. Just coffee.
-          </p>
+          <p class="form-note">We'll email you a time.</p>
           <p class="error" id="error" role="alert" hidden></p>
         </div>
         <article
@@ -91,39 +74,27 @@
           aria-live="polite"
           aria-label="Your coffee booking"
         >
-          <header>
-            <span>OPENWORK / COFFEE</span
-            ><span class="ticket-number">SF—001</span>
-          </header>
-          <div class="rule"></div>
           <div id="receipt-body"></div>
-          <div class="rule"></div>
           <footer id="receipt-footer"></footer>
         </article>
         <footer class="scene-footer">
           <span class="scene-status" id="scene-status" role="status"
-            >LOADING THE NEIGHBORHOOD…</span
+            >Loading neighborhood…</span
           >
-          <a id="world-credit" target="_blank" rel="noopener"
-            >WORLD BY WORLD LABS ↗</a
-          >
+          <a id="world-credit" target="_blank" rel="noopener">World Labs</a>
         </footer>
       </section>
       <section class="install" id="install" hidden>
-        <div class="install-inner">
-          <div class="install-heading">
-            <span class="small-index">01 / FOR YOUR AGENT</span>
-            <h2>Coffee is a tool call away.</h2>
-          </div>
+        <details class="install-inner">
+          <summary>Add to your agent <span aria-hidden="true">+</span></summary>
           <p class="install-lede">
-            One URL. No API key. Tell your agent your email and say
-            <em>“grab a coffee with OpenWork.”</em> No forms, no clicking. This
-            view is just the nice bit.
+            Add this MCP URL. Then give your agent your email and ask for
+            coffee.
           </p>
           <div class="url-row">
             <code id="mcp-url"></code
             ><button type="button" class="copy" data-copy-target="mcp-url">
-              Copy URL ↗
+              Copy
             </button>
           </div>
           <div
@@ -133,11 +104,7 @@
             id="tabs"
           ></div>
           <div class="panel" id="panel"></div>
-          <div class="page-footer">
-            <span>OPENWORK LABS · SAN FRANCISCO</span
-            ><span>BUILT FOR GOOD CONVERSATIONS.</span>
-          </div>
-        </div>
+        </details>
       </section>
     </main>
     <script type="module" src="./main.ts"></script>
