@@ -43,6 +43,12 @@ The map is optional and independent of booking. Drag to explore the neighborhood
 
 Full experience and limitations: [docs/DESIGN.md](docs/DESIGN.md).
 
+## If an MCP client still shows an older design
+
+The website and MCP resource both serve the current build. MCP hosts can cache UI HTML by its `ui://` resource URI, and an existing task may preserve a rendered snapshot. The server now derives the resource URI and server version from the HTML's SHA-256 hash, so a changed UI has a changed identity. The original `ui://coffee/sf.html` remains readable for compatibility.
+
+Refresh or reconnect the Coffee connector so the client fetches the new tool metadata, then call `grab_coffee` in a fresh task. Updating the server cannot force an already-rendered historical card to change.
+
 ## Development and tests
 
 ```sh

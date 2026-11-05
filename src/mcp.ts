@@ -1,12 +1,24 @@
+import { createHash } from "node:crypto";
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
-import { RESOURCE_MIME_TYPE, registerAppResource, registerAppTool } from "@modelcontextprotocol/ext-apps/server";
+import {
+  RESOURCE_MIME_TYPE,
+  registerAppResource,
+  registerAppTool,
+} from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 import appHtml from "../dist/app.html";
 import { coffeeStatus, requestCoffee } from "./coffee";
 import type { Env } from "./env";
 import type { CoffeeResult } from "./shared";
 
-export const VIEW_URI = "ui://coffee/sf.html";
+// MCP hosts can cache UI resources by URI for much longer than a website page.
+// A new HTML build must have a new identity, not just different content at one URI.
+export const VIEW_BUILD = createHash("sha256")
+  .update(appHtml)
+  .digest("hex")
+  .slice(0, 16);
+export const VIEW_URI = `ui://coffee/sf-${VIEW_BUILD}.html`;
+export const LEGACY_VIEW_URI = "ui://coffee/sf.html";
 
 const INSTRUCTIONS = `Book a coffee with the OpenWork team in San Francisco.
 Call grab_coffee when the user wants to meet, grab coffee, or chat with OpenWork in person.
@@ -42,13 +54,20 @@ function toToolResult(result: CoffeeResult): CallToolResult {
   return {
     content: [{ type: "text", text: describe(result) }],
     structuredContent: { ...result },
-    isError: result.state === "error" && result.code !== "rate_limited" ? true : undefined,
+    isError:
+      result.state === "error" && result.code !== "rate_limited"
+        ? true
+        : undefined,
   };
 }
 
 export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
   const server = new McpServer(
-    { name: "coffee-sf", title: "Coffee in SF · OpenWork", version: "0.2.0" },
+    {
+      name: "coffee-sf",
+      title: "Coffee in SF · OpenWork",
+      version: `0.2.0+${VIEW_BUILD}`,
+    },
     { instructions: INSTRUCTIONS },
   );
 
@@ -63,15 +82,30 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
         email: z
           .string()
           .optional()
-          .describe("The user's email. Only include it if the user gave it for booking coffee; this immediately books and attempts to send an invite. Otherwise ask the user for it."),
-        note: z.string().max(280).optional().describe("Optional note for the team, e.g. what they'd like to chat about."),
+          .describe(
+            "The user's email. Only include it if the user gave it for booking coffee; this immediately books and attempts to send an invite. Otherwise ask the user for it.",
+          ),
+        note: z
+          .string()
+          .max(280)
+          .optional()
+          .describe(
+            "Optional note for the team, e.g. what they'd like to chat about.",
+          ),
       }),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
       _meta: { ui: { resourceUri: VIEW_URI } },
     },
     async ({ email, note }) => {
       if (email === undefined) return toToolResult({ state: "ask_email" });
-      return toToolResult(await requestCoffee(env, { email, note, source: "mcp", ip: ctx.ip }));
+      return toToolResult(
+        await requestCoffee(env, { email, note, source: "mcp", ip: ctx.ip }),
+      );
     },
   );
 
@@ -80,38 +114,49 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
     "coffee_status",
     {
       title: "Check a coffee booking",
-      description: "Retrieve a coffee booking's time, place, calendar links and inviteDelivery send outcome, or the status of a legacy web confirmation request.",
-      inputSchema: z.object({ requestId: z.string().describe("The requestId returned by grab_coffee.") }),
+      description:
+        "Retrieve a coffee booking's time, place, calendar links and inviteDelivery send outcome, or the status of a legacy web confirmation request.",
+      inputSchema: z.object({
+        requestId: z
+          .string()
+          .describe("The requestId returned by grab_coffee."),
+      }),
       annotations: { readOnlyHint: true, openWorldHint: false },
       _meta: { ui: { resourceUri: VIEW_URI } },
     },
     async ({ requestId }) => toToolResult(await coffeeStatus(env, requestId)),
   );
 
-  registerAppResource(
-    server,
-    "Coffee in SF",
-    VIEW_URI,
-    { description: "A top-down San Francisco neighborhood map with the booking returned by grab_coffee or coffee_status. The exact meeting address is sent only by email." },
-    async () => ({
-      contents: [
-        {
-          uri: VIEW_URI,
-          mimeType: RESOURCE_MIME_TYPE,
-          text: appHtml,
-          _meta: {
-            ui: {
-              prefersBorder: false,
-              csp: {
-                connectDomains: [],
-                resourceDomains: [],
+  // Keep the old URI readable for clients holding an older tools/list result.
+  for (const uri of [VIEW_URI, LEGACY_VIEW_URI]) {
+    registerAppResource(
+      server,
+      uri === VIEW_URI ? "Coffee in SF" : "Coffee in SF (legacy resource URL)",
+      uri,
+      {
+        description:
+          "A top-down San Francisco neighborhood map with the booking returned by grab_coffee or coffee_status. The exact meeting address is sent only by email.",
+      },
+      async () => ({
+        contents: [
+          {
+            uri,
+            mimeType: RESOURCE_MIME_TYPE,
+            text: appHtml,
+            _meta: {
+              ui: {
+                prefersBorder: false,
+                csp: {
+                  connectDomains: [],
+                  resourceDomains: [],
+                },
               },
             },
           },
-        },
-      ],
-    }),
-  );
+        ],
+      }),
+    );
+  }
 
   return server;
 }
