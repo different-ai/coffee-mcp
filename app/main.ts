@@ -197,7 +197,7 @@ function render(result: CoffeeResult): void {
         line("You're on for coffee.", "big"),
         row("For", result.email),
         row("When", result.when),
-        row("Where", result.place),
+        row("Where", "San Francisco · Address in your email."),
         line(
           result.inviteDelivery === "sent"
             ? "Invite sent. See you there."
@@ -211,8 +211,7 @@ function render(result: CoffeeResult): void {
         linkButton("Add to calendar", result.googleCalendarUrl),
         linkButton(".ics", result.calendarUrl, true),
       );
-      if (result.placeUrl)
-        receiptFooter.append(linkButton("Map", result.placeUrl, true));
+      // The precise meeting address is provided in the invitation email only.
       return;
     }
   }

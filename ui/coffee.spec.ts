@@ -113,7 +113,7 @@ test("email supplied by the agent books directly and hydrates the filled receipt
     arguments: { email: `browser-test-${Date.now()}@example.com` },
   });
   expect(result.structuredContent.state).toBe("booked");
-  expect(result.structuredContent.place).toContain("700 Alabama");
+  expect(JSON.stringify(result)).not.toContain("700 Alabama");
   const frame = await host(page, request, result);
   await expect(frame.locator("#receipt")).toBeVisible();
   await expect(frame.locator("#email")).toHaveValue(
@@ -122,7 +122,8 @@ test("email supplied by the agent books directly and hydrates the filled receipt
   await expect(frame.locator("#receipt")).toContainText(
     result.structuredContent.when,
   );
-  await expect(frame.locator("#receipt")).toContainText("700 Alabama");
+  await expect(frame.locator("#receipt")).not.toContainText("700 Alabama");
+  await expect(frame.locator("#receipt")).toContainText("Address in your email.");
   await expect(frame.locator("#receipt")).not.toContainText("Tap the link");
   await expect(frame.locator("#stage")).toHaveClass(/scene-ready/, {
     timeout: 40000,
@@ -180,7 +181,7 @@ test("a failed invite is shown honestly, with calendar links still available", a
       start: "2026-11-05T18:00:00Z",
       end: "2026-11-05T18:30:00Z",
       when: "Thursday, Nov 5 · 10:00 AM PST",
-      place: "OpenWork · 700 Alabama St, San Francisco",
+      place: "San Francisco · Address in your email.",
       inviteDelivery: "failed",
       calendarUrl: "https://coffee.openworklabs.com/sf/ics?id=test",
       googleCalendarUrl: "https://calendar.google.com",

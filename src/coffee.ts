@@ -88,10 +88,9 @@ function bookedResult(env: Env, req: StoredRequest): CoffeeResult {
     start: req.start,
     end: req.end,
     when: formatWhen(event.start, env.TIMEZONE),
-    place: env.COFFEE_PLACE,
-    placeUrl: env.COFFEE_PLACE_URL,
+    place: "San Francisco · Address in your email.",
     calendarUrl: `${publicBase(env)}/ics?id=${req.id}`,
-    googleCalendarUrl: googleCalendarUrl(event),
+    googleCalendarUrl: googleCalendarUrl({ ...event, location: "San Francisco — see your email for the address" }),
     inviteDelivery: req.inviteDelivery ?? "unknown",
   };
 }
@@ -213,10 +212,10 @@ async function bookRequest(
         to: booked.email,
         cc: env.HOST_EMAIL,
         when: result.when,
-        place: result.place,
-        placeUrl: result.placeUrl,
+        place: env.COFFEE_PLACE,
+        placeUrl: env.COFFEE_PLACE_URL,
         hostName: env.HOST_NAME,
-        googleCalendarUrl: result.googleCalendarUrl,
+        googleCalendarUrl: googleCalendarUrl(event),
         ics: buildIcs(event, now),
       }),
     );
@@ -244,5 +243,5 @@ export async function coffeeStatus(env: Env, requestId: string): Promise<CoffeeR
 export async function coffeeIcs(env: Env, requestId: string): Promise<string | null> {
   const req = await loadRequest(env.COFFEE_KV, requestId);
   const event = req ? calendarEvent(env, req) : null;
-  return event ? buildIcs(event) : null;
+  return event ? buildIcs({ ...event, location: "San Francisco — see your email for the address" }) : null;
 }

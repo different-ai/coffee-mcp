@@ -35,10 +35,16 @@ describe("requestCoffee", () => {
     const result = await requestCoffee(env, { email: "  Ada@Example.com ", note: "agents + coffee", source: "mcp" }, TUESDAY_9AM_PT);
     expect(result).toMatchObject({
       state: "booked", email: "ada@example.com", inviteDelivery: "sent",
-      start: "2026-11-04T18:00:00.000Z", place: "OpenWork · 700 Alabama St, San Francisco",
+      start: "2026-11-04T18:00:00.000Z", place: "San Francisco · Address in your email.",
     });
     const emails = calls.filter((call) => call.url === "https://api.resend.com/emails");
     expect(emails).toHaveLength(1);
+    expect(JSON.stringify(result)).not.toContain("700 Alabama");
+    expect(JSON.stringify(emails[0]?.body)).toContain("700 Alabama St, San Francisco");
+    if (result.state === "booked") {
+      expect(await coffeeIcs(env, result.requestId)).not.toContain("700 Alabama");
+      expect(result.placeUrl).toBeUndefined();
+    }
     expect(emails[0]?.body).toMatchObject({ to: ["ada@example.com"], attachments: [expect.objectContaining({ filename: "coffee.ics" })] });
     expect(JSON.stringify(calls.find((call) => call.url.includes("hooks.slack.com"))?.body)).toContain("agents + coffee");
   });
@@ -96,7 +102,7 @@ describe("confirmCoffee", () => {
       email: "ada@example.com",
       start: "2026-11-04T18:00:00.000Z",
       when: "Wednesday, Nov 4 · 10:00 AM PST",
-      place: "OpenWork · 700 Alabama St, San Francisco",
+      place: "San Francisco · Address in your email.",
     });
     expect(slack).toBe("sent");
 

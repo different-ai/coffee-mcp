@@ -8,7 +8,7 @@
 
 Hover or keyboard-focus **mean coffee** to reveal **aka good coffee.**
 
-**Meet at OpenWork · 700 Alabama St, San Francisco.**
+**San Francisco. The full meeting address is included only in the invitation email and its attached calendar file—not the page, MCP response, public calendar download or booking panel.**
 
 ## Agent first, UI optional
 

@@ -2,7 +2,7 @@
 
 **Hey this is OpenWork. We make some mean coffee. Come get coffee with us.**
 
-Live: **https://coffee.openworklabs.com/sf** · Meet us at **700 Alabama St, San Francisco**.
+Live: **https://coffee.openworklabs.com/sf** · San Francisco. The meeting address is sent by email, not shown in the page or MCP booking response.
 
 Add one URL to your agent. Tell it your email, and say **“grab a coffee with OpenWork.”** It books and sends an invite. No forms or confirmation clicks required. The optional MCP App shows your booking over a light street wireframe derived from the SF reconstruction, with floating crops of the actual source image.
 

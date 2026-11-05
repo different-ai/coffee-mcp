@@ -74,7 +74,7 @@ describe("MCP over HTTP at /sf", () => {
     const call = await rpc(env, "tools/call", { name: "grab_coffee", arguments: { email: "ada@example.com" } });
     expect(call.result.structuredContent).toMatchObject({
       state: "booked", email: "ada@example.com", inviteDelivery: "sent",
-      place: "OpenWork · 700 Alabama St, San Francisco",
+      place: "San Francisco · Address in your email.",
     });
     expect(call.result.content[0].text).toContain("No confirmation click is needed");
     const repeated = await rpc(env, "tools/call", { name: "grab_coffee", arguments: { email: "ada@example.com" } });
@@ -116,7 +116,8 @@ describe("web routes", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
     const page = await res.text();
     expect(page).toContain("Hey this is OpenWork.");
-    expect(page).toContain("700 Alabama St");
+    expect(page).not.toContain("700 Alabama St");
+    expect(page).toContain("Address in your email.");
     expect(page).toContain("aka good coffee.");
   });
 
