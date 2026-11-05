@@ -36,7 +36,10 @@ function parseRequest(raw: string | null): StoredRequest | null {
 }
 
 async function loadRequest(kv: KV, id: string): Promise<StoredRequest | null> {
-  return parseRequest(await kv.get(`req:${id}`));
+  const req = parseRequest(await kv.get(`req:${id}`));
+  if (!req || req.status !== "booked") return req;
+  const delivery = await kv.get(`invite:${id}`);
+  return delivery === "sent" || delivery === "failed" ? { ...req, inviteDelivery: delivery } : req;
 }
 
 async function saveRequest(kv: KV, req: StoredRequest): Promise<void> {
@@ -47,8 +50,13 @@ async function saveRequest(kv: KV, req: StoredRequest): Promise<void> {
 async function allow(kv: KV, key: string, limit: number, ttl: number): Promise<boolean> {
   const count = Number((await kv.get(key)) ?? "0");
   if (count >= limit) return false;
-  await kv.put(key, String(count + 1), { expirationTtl: ttl });
-  return true;
+  try {
+    await kv.put(key, String(count + 1), { expirationTtl: ttl });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && /429|same.key|too many requests/i.test(error.message)) return false;
+    throw error;
+  }
 }
 
 function randomToken(): string {
@@ -154,7 +162,8 @@ export async function requestCoffee(
           createdAt: now.toISOString(),
         };
 
-  await saveRequest(kv, req);
+  // Don't persist a transient pending state before immediately booking: Workers KV
+  // permits only one write to a given key per second.
   await kv.put(`token:${req.token}`, req.id, { expirationTtl: 7 * DAY });
   await kv.put(`email:${email}`, req.id, { expirationTtl: 90 * DAY });
   if (input.source === "mcp") return (await bookRequest(env, req, now)).result;
@@ -220,7 +229,8 @@ async function bookRequest(
       }),
     );
     booked.inviteDelivery = sent ? "sent" : "failed";
-    await saveRequest(kv, booked);
+    // Persist delivery separately instead of rewriting the just-created reservation.
+    await kv.put(`invite:${booked.id}`, booked.inviteDelivery, { expirationTtl: 90 * DAY });
     const slack = await notifySlack(env, {
       email: booked.email,
       when: result.when,

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { coffeeIcs, coffeeStatus, confirmCoffee, LIMITS, requestCoffee } from "../src/coffee";
 import { bookingMessage } from "../src/slack";
-import { captureFetch, makeEnv, TUESDAY_9AM_PT, type Captured } from "./helpers";
+import { captureFetch, makeEnv, MemoryKV, TUESDAY_9AM_PT, type Captured } from "./helpers";
 
 let calls: Captured[];
 beforeEach(() => {
@@ -14,6 +14,22 @@ function tokenFrom(url: string | undefined): string {
 }
 
 describe("requestCoffee", () => {
+  it("books and preserves delivery state without writing any KV key twice in one second", async () => {
+    class RateLimitedKV extends MemoryKV {
+      readonly writes = new Map<string, number>();
+      override async put(key: string, value: string) {
+        const now = Date.now();
+        if (now - (this.writes.get(key) ?? 0) < 1000) throw new Error(`KV PUT failed: 429 same-key write limit: ${key}`);
+        this.writes.set(key, now);
+        await super.put(key, value);
+      }
+    }
+    const env = makeEnv({ COFFEE_KV: new RateLimitedKV() });
+    const result = await requestCoffee(env, { email: "ada@example.com", source: "mcp" }, TUESDAY_9AM_PT);
+    expect(result).toMatchObject({ state: "booked", inviteDelivery: "sent" });
+    if (result.state !== "booked") throw new Error("Expected booking");
+    expect(await coffeeStatus(env, result.requestId)).toEqual(result);
+  });
   it("rejects things that aren't emails", async () => {
     const result = await requestCoffee(makeEnv(), { email: "not-an-email", source: "web" });
     expect(result).toMatchObject({ state: "error", code: "invalid_email" });

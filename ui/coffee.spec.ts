@@ -69,6 +69,16 @@ async function host(page: Page, request: APIRequestContext, result: unknown) {
             hostContext:{theme:'light',displayMode:'inline'}
           }}, '*');
         }
+        if (message.method === 'tools/call') {
+          window.widgetToolCalls = (window.widgetToolCalls || 0) + 1;
+          fetch('/sf', {method:'POST',headers:{'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:message.id,method:'tools/call',params:message.params})})
+            .then(response => response.text())
+            .then(text => {
+              const payload = JSON.parse(text.startsWith('{') ? text : text.split('\\n').find(line => line.startsWith('data:')).slice(5));
+              event.source.postMessage(payload, '*');
+            })
+            .catch(() => event.source.postMessage({jsonrpc:'2.0',id:message.id,error:{code:-32603,message:'Widget forwarding failed'}}, '*'));
+        }
         if (message.method === 'ui/notifications/initialized') {
           event.source.postMessage({jsonrpc:'2.0',method:'ui/notifications/tool-result',params:${JSON.stringify(result)}}, '*');
         }
@@ -219,6 +229,19 @@ test("the public website shows only install instructions, not the MCP map or for
     ),
   ).toBeTruthy();
   await page.screenshot({ path: "docs/install-mobile.png" });
+});
+
+test("Get coffee submits through the host to the real MCP endpoint and shows the booking", async ({ page, request }) => {
+  const initial = await rpc(request, "tools/call", { name: "grab_coffee", arguments: {} });
+  const frame = await host(page, request, initial);
+  const email = `click-test-${Date.now()}@example.com`;
+  await frame.locator("#email").fill(email);
+  await frame.getByRole("button", { name: "Get coffee", exact: true }).click();
+  await expect(frame.locator("#receipt")).toBeVisible({ timeout: 15000 });
+  await expect(frame.locator("#receipt")).toContainText(email);
+  await expect(frame.locator("#receipt")).toContainText("You're on for coffee.");
+  await expect(frame.locator("#error")).toBeHidden();
+  expect(await page.evaluate(() => Reflect.get(window, "widgetToolCalls"))).toBe(1);
 });
 
 test("a failed invite is shown honestly, with calendar links still available", async ({

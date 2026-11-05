@@ -99,7 +99,7 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
         idempotentHint: true,
         openWorldHint: true,
       },
-      _meta: { ui: { resourceUri: VIEW_URI } },
+      _meta: { ui: { resourceUri: VIEW_URI, visibility: ["model", "app"] } },
     },
     async ({ email, note }) => {
       if (email === undefined) return toToolResult({ state: "ask_email" });
@@ -122,7 +122,7 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
           .describe("The requestId returned by grab_coffee."),
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
-      _meta: { ui: { resourceUri: VIEW_URI } },
+      _meta: { ui: { resourceUri: VIEW_URI, visibility: ["model", "app"] } },
     },
     async ({ requestId }) => toToolResult(await coffeeStatus(env, requestId)),
   );
