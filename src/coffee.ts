@@ -24,6 +24,8 @@ const StoredRequestSchema = z.object({
   createdAt: z.string(),
   start: z.string().optional(),
   end: z.string().optional(),
+  confirmationDelivery: z.enum(["sent", "failed"]).optional(),
+  inviteDelivery: z.enum(["sent", "failed", "unknown"]).optional(),
 });
 type StoredRequest = z.infer<typeof StoredRequestSchema>;
 
@@ -34,7 +36,10 @@ function parseRequest(raw: string | null): StoredRequest | null {
 }
 
 async function loadRequest(kv: KV, id: string): Promise<StoredRequest | null> {
-  return parseRequest(await kv.get(`req:${id}`));
+  const req = parseRequest(await kv.get(`req:${id}`));
+  if (!req || req.status !== "booked") return req;
+  const delivery = await kv.get(`invite:${id}`);
+  return delivery === "sent" || delivery === "failed" ? { ...req, inviteDelivery: delivery } : req;
 }
 
 async function saveRequest(kv: KV, req: StoredRequest): Promise<void> {
@@ -45,8 +50,13 @@ async function saveRequest(kv: KV, req: StoredRequest): Promise<void> {
 async function allow(kv: KV, key: string, limit: number, ttl: number): Promise<boolean> {
   const count = Number((await kv.get(key)) ?? "0");
   if (count >= limit) return false;
-  await kv.put(key, String(count + 1), { expirationTtl: ttl });
-  return true;
+  try {
+    await kv.put(key, String(count + 1), { expirationTtl: ttl });
+    return true;
+  } catch (error) {
+    if (error instanceof Error && /429|same.key|too many requests/i.test(error.message)) return false;
+    throw error;
+  }
 }
 
 function randomToken(): string {
@@ -86,14 +96,22 @@ function bookedResult(env: Env, req: StoredRequest): CoffeeResult {
     start: req.start,
     end: req.end,
     when: formatWhen(event.start, env.TIMEZONE),
-    place: env.COFFEE_PLACE,
-    placeUrl: env.COFFEE_PLACE_URL,
+    place: "San Francisco · Address in your email.",
     calendarUrl: `${publicBase(env)}/ics?id=${req.id}`,
-    googleCalendarUrl: googleCalendarUrl(event),
+    googleCalendarUrl: googleCalendarUrl({ ...event, location: "San Francisco — see your email for the address" }),
+    inviteDelivery: req.inviteDelivery ?? "unknown",
   };
 }
 
 function checkInbox(env: Env, req: StoredRequest): CoffeeResult {
+  if (req.confirmationDelivery === "failed") {
+    return {
+      state: "error",
+      code: "email_delivery_failed",
+      message: "We couldn't send the confirmation email. No coffee has been booked. Try again later.",
+      requestId: req.id,
+    };
+  }
   return {
     state: "check_inbox",
     email: req.email,
@@ -128,12 +146,12 @@ export async function requestCoffee(
   }
 
   if (!(await allow(kv, `rl:email:${email}`, LIMITS.perEmailPerDay, DAY))) {
-    return { state: "error", code: "rate_limited", message: "We already sent a few emails to that address today. Check your inbox." };
+    return { state: "error", code: "rate_limited", message: "Too many coffee requests for that address today. Try again tomorrow." };
   }
 
   const req: StoredRequest =
     existing?.status === "pending"
-      ? { ...existing, note: input.note ?? existing.note }
+      ? { ...existing, note: input.note?.slice(0, 280) ?? existing.note, source: input.source }
       : {
           id: crypto.randomUUID(),
           email,
@@ -144,11 +162,15 @@ export async function requestCoffee(
           createdAt: now.toISOString(),
         };
 
-  await saveRequest(kv, req);
+  // Don't persist a transient pending state before immediately booking: Workers KV
+  // permits only one write to a given key per second.
   await kv.put(`token:${req.token}`, req.id, { expirationTtl: 7 * DAY });
   await kv.put(`email:${email}`, req.id, { expirationTtl: 90 * DAY });
-  await sendEmail(env, confirmationEmail(email, confirmUrl(env, req.token), env.HOST_NAME));
+  if (input.source === "mcp") return (await bookRequest(env, req, now)).result;
 
+  const sent = await sendEmail(env, confirmationEmail(email, confirmUrl(env, req.token), env.HOST_NAME));
+  req.confirmationDelivery = sent ? "sent" : "failed";
+  await saveRequest(kv, req);
   return checkInbox(env, req);
 }
 
@@ -167,7 +189,17 @@ export async function confirmCoffee(
     };
   }
   if (req.status === "booked") return { result: bookedResult(env, req), slack: "not_sent" };
+  return bookRequest(env, req, now);
+}
 
+// Sequential retries reuse the stored booking. KV read/write is not atomic:
+// concurrent requests can still compete for a slot or send duplicate invites.
+async function bookRequest(
+  env: Env,
+  req: StoredRequest,
+  now: Date,
+): Promise<{ result: CoffeeResult; slack: "sent" | "skipped" | "failed" | "not_sent" }> {
+  const kv = env.COFFEE_KV;
   const slot = await proposeSlot(now, env.TIMEZONE, async (iso) => (await kv.get(`slot:${iso}`)) !== null);
   await kv.put(`slot:${slot.start.toISOString()}`, req.id, { expirationTtl: 60 * DAY });
 
@@ -176,25 +208,29 @@ export async function confirmCoffee(
     status: "booked",
     start: slot.start.toISOString(),
     end: slot.end.toISOString(),
+    inviteDelivery: "unknown",
   };
   await saveRequest(kv, booked);
 
   const result = bookedResult(env, booked);
   const event = calendarEvent(env, booked);
   if (result.state === "booked" && event) {
-    await sendEmail(
+    const sent = await sendEmail(
       env,
       inviteEmail({
         to: booked.email,
         cc: env.HOST_EMAIL,
         when: result.when,
-        place: result.place,
-        placeUrl: result.placeUrl,
+        place: env.COFFEE_PLACE,
+        placeUrl: env.COFFEE_PLACE_URL,
         hostName: env.HOST_NAME,
-        googleCalendarUrl: result.googleCalendarUrl,
+        googleCalendarUrl: googleCalendarUrl(event),
         ics: buildIcs(event, now),
       }),
     );
+    booked.inviteDelivery = sent ? "sent" : "failed";
+    // Persist delivery separately instead of rewriting the just-created reservation.
+    await kv.put(`invite:${booked.id}`, booked.inviteDelivery, { expirationTtl: 90 * DAY });
     const slack = await notifySlack(env, {
       email: booked.email,
       when: result.when,
@@ -203,7 +239,7 @@ export async function confirmCoffee(
       source: booked.source,
       requestId: booked.id,
     });
-    return { result, slack };
+    return { result: bookedResult(env, booked), slack };
   }
   return { result, slack: "not_sent" };
 }
@@ -217,5 +253,5 @@ export async function coffeeStatus(env: Env, requestId: string): Promise<CoffeeR
 export async function coffeeIcs(env: Env, requestId: string): Promise<string | null> {
   const req = await loadRequest(env.COFFEE_KV, requestId);
   const event = req ? calendarEvent(env, req) : null;
-  return event ? buildIcs(event) : null;
+  return event ? buildIcs({ ...event, location: "San Francisco — see your email for the address" }) : null;
 }

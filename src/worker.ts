@@ -31,7 +31,7 @@ function html(body: string, status = 200): Response {
 
 function statusFor(result: CoffeeResult): number {
   if (result.state !== "error") return 200;
-  return { invalid_email: 400, rate_limited: 429, not_found: 404, internal: 500 }[result.code];
+  return { invalid_email: 400, rate_limited: 429, not_found: 404, internal: 500, email_delivery_failed: 503 }[result.code];
 }
 
 function esc(value: string): string {
@@ -69,7 +69,7 @@ function resultPage(result: CoffeeResult, home: string): string {
     return page(
       "You're on for coffee",
       `<h1>You're on for coffee ☕</h1><dl><dt>When</dt><dd>${esc(result.when)}</dd><dt>Where</dt><dd>${where}</dd></dl>
-<p>We emailed the invite to ${esc(result.email)}.</p>
+<p>${result.inviteDelivery === "sent" ? `The invite was sent to ${esc(result.email)}.` : `Your time is reserved for ${esc(result.email)}, but email delivery isn't confirmed. Save the calendar invite below.`}</p>
 <a class="btn" href="${esc(result.googleCalendarUrl)}">Add to Google Calendar</a><a class="btn secondary" href="${esc(result.calendarUrl)}">.ics</a>`,
     );
   }

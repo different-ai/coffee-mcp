@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { coffeeIcs, coffeeStatus, confirmCoffee, LIMITS, requestCoffee } from "../src/coffee";
 import { bookingMessage } from "../src/slack";
-import { captureFetch, makeEnv, TUESDAY_9AM_PT, type Captured } from "./helpers";
+import { captureFetch, makeEnv, MemoryKV, TUESDAY_9AM_PT, type Captured } from "./helpers";
 
 let calls: Captured[];
 beforeEach(() => {
@@ -14,6 +14,22 @@ function tokenFrom(url: string | undefined): string {
 }
 
 describe("requestCoffee", () => {
+  it("books and preserves delivery state without writing any KV key twice in one second", async () => {
+    class RateLimitedKV extends MemoryKV {
+      readonly writes = new Map<string, number>();
+      override async put(key: string, value: string) {
+        const now = Date.now();
+        if (now - (this.writes.get(key) ?? 0) < 1000) throw new Error(`KV PUT failed: 429 same-key write limit: ${key}`);
+        this.writes.set(key, now);
+        await super.put(key, value);
+      }
+    }
+    const env = makeEnv({ COFFEE_KV: new RateLimitedKV() });
+    const result = await requestCoffee(env, { email: "ada@example.com", source: "mcp" }, TUESDAY_9AM_PT);
+    expect(result).toMatchObject({ state: "booked", inviteDelivery: "sent" });
+    if (result.state !== "booked") throw new Error("Expected booking");
+    expect(await coffeeStatus(env, result.requestId)).toEqual(result);
+  });
   it("rejects things that aren't emails", async () => {
     const result = await requestCoffee(makeEnv(), { email: "not-an-email", source: "web" });
     expect(result).toMatchObject({ state: "error", code: "invalid_email" });
@@ -21,13 +37,52 @@ describe("requestCoffee", () => {
 
   it("asks the person to check their inbox and emails a confirm link", async () => {
     const env = makeEnv({ RESEND_API_KEY: "re_test" });
-    const result = await requestCoffee(env, { email: "  Ada@Example.com ", source: "mcp" }, TUESDAY_9AM_PT);
+    const result = await requestCoffee(env, { email: "  Ada@Example.com ", source: "web" }, TUESDAY_9AM_PT);
     expect(result).toMatchObject({ state: "check_inbox", email: "ada@example.com" });
     expect(result.state === "check_inbox" && result.devConfirmUrl).toMatch(
       /^https:\/\/coffee\.openworklabs\.com\/sf\/confirm\?token=[0-9a-f]{48}$/,
     );
     const resend = calls.find((c) => c.url === "https://api.resend.com/emails");
     expect(resend?.body).toMatchObject({ to: ["ada@example.com"], subject: "Confirm your coffee in SF ☕" });
+  });
+
+  it("books directly for MCP, preserving the normalized email, note and delivery state", async () => {
+    const env = makeEnv({ SLACK_WEBHOOK_URL: "https://hooks.slack.com/x" });
+    const result = await requestCoffee(env, { email: "  Ada@Example.com ", note: "agents + coffee", source: "mcp" }, TUESDAY_9AM_PT);
+    expect(result).toMatchObject({
+      state: "booked", email: "ada@example.com", inviteDelivery: "sent",
+      start: "2026-11-04T18:00:00.000Z", place: "San Francisco · Address in your email.",
+    });
+    const emails = calls.filter((call) => call.url === "https://api.resend.com/emails");
+    expect(emails).toHaveLength(1);
+    expect(JSON.stringify(result)).not.toContain("700 Alabama");
+    expect(JSON.stringify(emails[0]?.body)).toContain("700 Alabama St, San Francisco");
+    if (result.state === "booked") {
+      expect(await coffeeIcs(env, result.requestId)).not.toContain("700 Alabama");
+      expect(result.placeUrl).toBeUndefined();
+    }
+    expect(emails[0]?.body).toMatchObject({ to: ["ada@example.com"], attachments: [expect.objectContaining({ filename: "coffee.ics" })] });
+    expect(JSON.stringify(calls.find((call) => call.url.includes("hooks.slack.com"))?.body)).toContain("agents + coffee");
+  });
+
+  it("promotes an existing web request to a direct MCP booking without another confirmation", async () => {
+    const env = makeEnv();
+    const pending = await requestCoffee(env, { email: "ada@example.com", source: "web" }, TUESDAY_9AM_PT);
+    const booked = await requestCoffee(env, { email: "ada@example.com", source: "mcp" }, TUESDAY_9AM_PT);
+    if (pending.state !== "check_inbox" || booked.state !== "booked") throw new Error("expected pending then booked");
+    expect(booked.requestId).toBe(pending.requestId);
+    expect(calls.filter((call) => call.url === "https://api.resend.com/emails")).toHaveLength(2);
+    expect((await confirmCoffee(env, tokenFrom(pending.devConfirmUrl), TUESDAY_9AM_PT)).result).toEqual(booked);
+    expect(calls.filter((call) => call.url === "https://api.resend.com/emails")).toHaveLength(2);
+  });
+
+  it("keeps the IP limit for direct MCP bookings", async () => {
+    const env = makeEnv();
+    await env.COFFEE_KV.put("rl:ip:192.0.2.1", String(LIMITS.perIpPerHour));
+    expect(await requestCoffee(env, { email: "ada@example.com", source: "mcp", ip: "192.0.2.1" })).toMatchObject({
+      state: "error", code: "rate_limited",
+    });
+    expect(calls).toHaveLength(0);
   });
 
   it("does not leak the confirm link outside dev mode", async () => {
@@ -54,7 +109,7 @@ describe("requestCoffee", () => {
 describe("confirmCoffee", () => {
   it("books a slot, sends the invite and posts to Slack", async () => {
     const env = makeEnv({ RESEND_API_KEY: "re_test", SLACK_BOT_TOKEN: "xoxb-test", SLACK_CHANNEL_ID: "C0CF2BGF1MF" });
-    const req = await requestCoffee(env, { email: "ada@example.com", note: "agents + coffee", source: "mcp" }, TUESDAY_9AM_PT);
+    const req = await requestCoffee(env, { email: "ada@example.com", note: "agents + coffee", source: "web" }, TUESDAY_9AM_PT);
     const token = tokenFrom(req.state === "check_inbox" ? req.devConfirmUrl : undefined);
 
     const { result, slack } = await confirmCoffee(env, token, TUESDAY_9AM_PT);
@@ -63,7 +118,7 @@ describe("confirmCoffee", () => {
       email: "ada@example.com",
       start: "2026-11-04T18:00:00.000Z",
       when: "Wednesday, Nov 4 · 10:00 AM PST",
-      place: "Sightglass Coffee, 270 7th St, San Francisco",
+      place: "San Francisco · Address in your email.",
     });
     expect(slack).toBe("sent");
 
@@ -121,6 +176,45 @@ describe("confirmCoffee", () => {
     const ics = await coffeeIcs(env, req.requestId);
     expect(ics).toContain("DTSTART:20261104T180000Z");
     expect(ics).toContain("ATTENDEE;ROLE=REQ-PARTICIPANT;RSVP=TRUE:mailto:a@b.co");
+  });
+});
+
+describe("email delivery", () => {
+  it("prefers the Cloudflare Email Service binding and attaches the invite", async () => {
+    const sent: Parameters<NonNullable<ReturnType<typeof makeEnv>["EMAIL"]>["send"]>[0][] = [];
+    const env = makeEnv({
+      RESEND_API_KEY: "re_should_not_be_used",
+      HOST_EMAIL: "host@openworklabs.com",
+      EMAIL: { send: async (m) => (sent.push(m), { messageId: "m1" }) },
+    });
+    const req = await requestCoffee(env, { email: "ada@example.com", source: "web" }, TUESDAY_9AM_PT);
+    await confirmCoffee(env, tokenFrom(req.state === "check_inbox" ? req.devConfirmUrl : undefined), TUESDAY_9AM_PT);
+    expect(sent.map((m) => m.subject)).toEqual([
+      "Confirm your coffee in SF ☕",
+      "Coffee with the OpenWork team: Wednesday, Nov 4 · 10:00 AM PST",
+    ]);
+    expect(sent[0]?.from).toEqual({ name: "OpenWork Coffee", email: "coffee@openworklabs.com" });
+    expect(sent[1]?.cc).toBe("host@openworklabs.com");
+    expect(sent[1]?.attachments?.[0]).toMatchObject({ filename: "coffee.ics", disposition: "attachment" });
+    expect(calls.some((c) => c.url.includes("resend.com"))).toBe(false);
+  });
+
+  it("does not claim check_inbox when confirmation delivery throws", async () => {
+    const env = makeEnv({ EMAIL: { send: async () => Promise.reject(new Error("E_SENDER_NOT_VERIFIED")) } });
+    const result = await requestCoffee(env, { email: "a@b.co", source: "web" });
+    expect(result).toMatchObject({ state: "error", code: "email_delivery_failed" });
+    if (result.state !== "error" || !result.requestId) throw new Error("expected delivery failure with request id");
+    expect(await coffeeStatus(env, result.requestId)).toEqual(result);
+  });
+
+  it("reports an unconfigured sender accurately for both flows", async () => {
+    const env = makeEnv({ RESEND_API_KEY: undefined });
+    expect(await requestCoffee(env, { email: "web@example.com", source: "web" })).toMatchObject({
+      state: "error", code: "email_delivery_failed",
+    });
+    expect(await requestCoffee(env, { email: "mcp@example.com", source: "mcp" })).toMatchObject({
+      state: "booked", inviteDelivery: "failed",
+    });
   });
 });
 

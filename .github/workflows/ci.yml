@@ -16,4 +16,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm wrangler deploy --dry-run --outdir /tmp/worker
+      - run: pnpm exec wrangler deploy --dry-run --outdir /tmp/worker
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: |
+            docs/*.png
+            test-results/
+          if-no-files-found: ignore

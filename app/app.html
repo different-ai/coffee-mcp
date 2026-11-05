@@ -3,51 +3,104 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Grab a coffee in SF · OpenWork</title>
-    <meta name="description" content="Put your email address and we'll send you a time to grab a coffee with the OpenWork team in San Francisco." />
+    <title>Coffee with OpenWork</title>
+    <meta
+      name="description"
+      content="Come get coffee with OpenWork in San Francisco."
+    />
+    <link rel="icon" href="./openwork-logo.svg?inline" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main id="root">
-      <section class="stage" id="stage">
-        <canvas id="scene" aria-hidden="true"></canvas>
-        <div class="vignette" aria-hidden="true"></div>
-
+      <section
+        class="stage"
+        id="stage"
+        aria-label="Coffee with OpenWork in San Francisco"
+      >
+        <div class="scene-wrap">
+          <div id="scene" aria-label="Top-down neighborhood map"></div>
+          <div class="vignette" aria-hidden="true"></div>
+        </div>
+        <header class="masthead">
+          <a
+            class="wordmark"
+            href="https://openworklabs.com"
+            target="_blank"
+            rel="noopener"
+            aria-label="OpenWork homepage"
+            ><img
+              class="brand-logo"
+              src="./openwork-logo.svg"
+              alt=""
+              aria-hidden="true"
+            /><span>OpenWork</span></a
+          >
+          <span>San Francisco</span>
+        </header>
         <div class="card" id="card">
-          <p class="eyebrow">coffee.openworklabs.com/sf</p>
-          <h1>Grab a coffee in San&nbsp;Francisco</h1>
-          <p class="lede">Put your email address and we'll send you a time to grab a coffee with the OpenWork team.</p>
+          <h1>Coffee at OpenWork</h1>
+          <p class="invitation">
+            Visit us at our office and get a free cup of some of the best coffee
+            in SF.
+          </p>
+          <p class="location">San Francisco · Address in your email.</p>
           <form id="form" novalidate>
             <label for="email" class="sr-only">Email address</label>
-            <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="Put your email address" required />
-            <button type="submit" id="submit">Grab a coffee</button>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="Put your email address"
+              required
+            />
+            <button type="submit" id="submit">Get coffee</button>
           </form>
+          <p class="form-note">We'll email you a time.</p>
           <p class="error" id="error" role="alert" hidden></p>
         </div>
-
-        <article class="receipt" id="receipt" hidden aria-live="polite">
-          <header>
-            <span>OPENWORK COFFEE</span>
-            <span>SF</span>
-          </header>
-          <div class="rule"></div>
+        <article
+          class="receipt"
+          id="receipt"
+          hidden
+          aria-live="polite"
+          aria-label="Your coffee booking"
+        >
           <div id="receipt-body"></div>
-          <div class="rule"></div>
           <footer id="receipt-footer"></footer>
         </article>
+        <footer class="scene-footer">
+          <span class="scene-status" id="scene-status" role="status"
+            >Loading neighborhood…</span
+          >
+          <a id="world-credit" target="_blank" rel="noopener"
+            >© OpenStreetMap contributors</a
+          >
+        </footer>
       </section>
-
       <section class="install" id="install" hidden>
-        <div class="install-inner">
-          <h2>Add it to your agent</h2>
-          <p class="install-lede">One URL. No API key. Then say <em>"grab a coffee with OpenWork."</em></p>
+        <details class="install-inner">
+          <summary>Add to your agent <span aria-hidden="true">+</span></summary>
+          <p class="install-lede">
+            Add this MCP URL. Then give your agent your email and ask for
+            coffee.
+          </p>
           <div class="url-row">
-            <code id="mcp-url"></code>
-            <button type="button" class="copy" data-copy-target="mcp-url">Copy</button>
+            <code id="mcp-url"></code
+            ><button type="button" class="copy" data-copy-target="mcp-url">
+              Copy
+            </button>
           </div>
-          <div class="tabs" role="tablist" id="tabs"></div>
+          <div
+            class="tabs"
+            role="tablist"
+            aria-label="Setup instructions"
+            id="tabs"
+          ></div>
           <div class="panel" id="panel"></div>
-        </div>
+        </details>
       </section>
     </main>
     <script type="module" src="./main.ts"></script>
