@@ -137,45 +137,88 @@ test("email supplied by the agent books directly and hydrates the filled receipt
 
 test("uses the real OpenWork logo, app branding and office invitation", async ({
   page,
+  request,
 }) => {
-  await page.goto("/sf");
-  await expect(page.locator(".wordmark")).toHaveText("OpenWork");
-  await expect(page.locator(".brand-logo")).toBeVisible();
+  const result = await rpc(request, "tools/call", {
+    name: "grab_coffee",
+    arguments: {},
+  });
+  const frame = await host(page, request, result);
+  await expect(frame.locator(".wordmark")).toHaveText("OpenWork");
+  await expect(frame.locator(".brand-logo")).toBeVisible();
   expect(
-    await page
+    await frame
       .locator(".brand-logo")
       .evaluate(
         (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
       ),
   ).toBeTruthy();
-  await expect(page.locator(".brand-logo")).toHaveCSS("width", "20px");
-  await expect(page.locator("#submit")).toHaveCSS(
+  await expect(frame.locator(".brand-logo")).toHaveCSS("width", "20px");
+  await expect(frame.locator("#submit")).toHaveCSS(
     "background-color",
     "rgb(1, 22, 39)",
   );
-  await expect(page.locator(".invitation")).toHaveText(
+  await expect(frame.locator(".invitation")).toHaveText(
     "Visit us at our office and get a free cup of some of the best coffee in SF.",
   );
-  await expect(page.locator("#stage")).toHaveClass(/scene-ready/);
-  await page.screenshot({ path: "docs/idle.png" });
+  await expect(frame.locator("#stage")).toHaveClass(/scene-ready/);
+  await expect(frame.locator("#install")).toBeHidden();
+  await page.screenshot({ path: "docs/app.png" });
 });
 
-test("mobile invitation stays readable without horizontal overflow", async ({
+test("mobile MCP invitation stays readable without horizontal overflow", async ({
   page,
+  request,
 }) => {
   await page.setViewportSize({ width: 390, height: 1000 });
-  await page.goto("/sf");
-  await expect(page.locator("#stage")).toHaveClass(/scene-ready/, {
-    timeout: 40000,
+  const result = await rpc(request, "tools/call", {
+    name: "grab_coffee",
+    arguments: {},
   });
-  await expect(page.locator("#email")).toBeVisible();
-  await expect(page.locator("#submit")).toBeVisible();
+  const frame = await host(page, request, result);
+  await expect(frame.locator("#stage")).toHaveClass(/scene-ready/);
+  await expect(frame.locator("#email")).toBeVisible();
+  await expect(frame.locator("#submit")).toBeVisible();
+  expect(
+    await frame
+      .locator("body")
+      .evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBeTruthy();
+  await page.screenshot({ path: "docs/mobile.png" });
+});
+
+test("the public website shows only install instructions, not the MCP map or form", async ({
+  page,
+}) => {
+  await page.goto("/sf");
+  await expect(page.locator("#install")).toBeVisible();
+  await expect(page.locator("details")).toHaveAttribute("open", "");
+  await expect(page.locator("#stage")).toBeHidden();
+  await expect(page.locator("#email")).toBeHidden();
+  await expect(page.locator("#scene svg")).toHaveCount(0);
+  await expect(page.locator("#mcp-url")).toContainText("/sf");
+  await expect(page.locator(".snippet pre")).toContainText(
+    "claude mcp add --transport http coffee",
+  );
+  for (const name of [
+    "Claude Code",
+    "Cursor",
+    "Codex",
+    "VS Code",
+    "OpenWork",
+    "Claude.ai / ChatGPT",
+  ]) {
+    await expect(page.getByRole("tab", { name, exact: true })).toBeVisible();
+  }
+  await page.screenshot({ path: "docs/idle.png" });
+  await page.setViewportSize({ width: 390, height: 850 });
+  await expect(page.locator("#stage")).toBeHidden();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBeTruthy();
-  await page.screenshot({ path: "docs/mobile.png" });
+  await page.screenshot({ path: "docs/install-mobile.png" });
 });
 
 test("a failed invite is shown honestly, with calendar links still available", async ({

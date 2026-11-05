@@ -23,7 +23,7 @@ No API key, no sign-in. URL: `https://coffee.openworklabs.com/sf`.
 | OpenWork | Library → Add to library → Connector → Add an MCP → URL → No sign-in |
 | Other MCP clients | Add a remote Streamable HTTP server with the URL above |
 
-Opening that same URL in a browser shows the invitation and setup instructions. The standalone web form retains email verification; agents don't need it.
+Opening that URL in a browser shows only the MCP URL, client tabs and install instructions, expanded by default. The map, logo, invitation and booking form are shown only inside the MCP App. The public website never initializes the map or displays the booking form.
 
 ## Two tools, no required UI
 

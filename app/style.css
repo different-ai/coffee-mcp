@@ -41,6 +41,34 @@ button {
   white-space: nowrap;
   border: 0;
 }
+body:not(.mcp-app) .stage {
+  display: none;
+}
+body.standalone .install {
+  min-height: 100svh;
+  display: grid;
+  align-content: center;
+  padding: 48px 24px;
+}
+body.standalone .install-inner {
+  width: 100%;
+  max-width: 680px;
+}
+body.standalone summary {
+  justify-content: space-between;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--foreground);
+  padding: 0 0 16px;
+}
+body.standalone .install-lede {
+  margin: 0 0 22px;
+  font-size: 13px;
+}
+body.standalone .panel {
+  padding-bottom: 0;
+}
+body.standalone details[open] summary span { transform: none; }
 .stage {
   position: relative;
   isolation: isolate;

@@ -28,7 +28,7 @@ A small utility over the real neighborhood, not a marketing landing page:
 - Small OpenWork header. One compact, bottom-centered panel holds the invitation and email field. It says the address will arrive by email.
 - System sans-serif, restrained green/gray, soft off-white panel. No oversized headings, badges, italics, stamps or faux paper receipt.
 - The booked state uses the same compact panel with a date and calendar buttons. The precise address remains in the email.
-- Setup instructions are collapsed behind one “Add to your agent” row, not a second landing-page section.
+- The public website is install-only: “Add to your agent”, the URL, client tabs and instructions, expanded by default. The map and booking form appear only in the MCP App.
 - On phones, the field and button stack. Reduced-motion disables camera drift and transitions.
 
 ## The map

@@ -9,6 +9,10 @@ const $ = <T extends HTMLElement>(sel: string): T => {
   return el;
 };
 
+/** The browser URL is install-only; the embedded MCP view owns the map and form. */
+const standalone = window.self === window.top;
+document.body.classList.add(standalone ? "standalone" : "mcp-app");
+
 const form = $<HTMLFormElement>("#form");
 const input = $<HTMLInputElement>("#email");
 const submit = $<HTMLButtonElement>("#submit");
@@ -25,20 +29,19 @@ const stage = $<HTMLElement>("#stage");
 const status = $<HTMLElement>("#scene-status");
 $<HTMLAnchorElement>("#world-credit").href =
   "https://www.openstreetmap.org/copyright";
-const scene = createScene($<HTMLDivElement>("#scene"), {
-  reducedMotion,
-  onStatus(value) {
-    stage.classList.toggle("scene-ready", value === "ready");
-    status.textContent = {
-      loading: "Loading map…",
-      ready: "Mission District · Drag to explore",
-      fallback: "Neighborhood map",
-    }[value];
-  },
-});
-
-/** Inside an MCP host we live in an iframe; on coffee.openworklabs.com we're the page. */
-const standalone = window.self === window.top;
+const scene = standalone
+  ? undefined
+  : createScene($<HTMLDivElement>("#scene"), {
+      reducedMotion,
+      onStatus(value) {
+        stage.classList.toggle("scene-ready", value === "ready");
+        status.textContent = {
+          loading: "Loading map…",
+          ready: "Mission District · Drag to explore",
+          fallback: "Neighborhood map",
+        }[value];
+      },
+    });
 
 interface Backend {
   request(email: string): Promise<CoffeeResult>;
@@ -278,7 +281,8 @@ async function connectToHost(): Promise<void> {
 }
 
 if (standalone) {
-  document.body.classList.add("standalone");
+  document.title = "Add Coffee to your agent · OpenWork";
+  $<HTMLDetailsElement>("#install details").open = true;
   renderInstall(
     $<HTMLElement>("#install"),
     `${location.origin}${location.pathname.replace(/\/+$/, "")}`,
