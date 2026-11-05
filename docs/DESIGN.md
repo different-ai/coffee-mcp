@@ -2,11 +2,9 @@
 
 ## The invitation
 
-> Hey this is OpenWork.
-> We make some mean coffee.
-> Come get coffee with us.
+> Visit us at our office and get a free cup of some of the best coffee in SF.
 
-Hover or keyboard-focus **mean coffee** to reveal **aka good coffee.**
+The header uses the exact `openwork-sidebar-mark.svg` from the desktop app beside the OpenWork name. `app/brand.css` copies the app's slate tokens, navy accent, system font stack, radii and card shadow. Keep the restrained layout; don't turn it into a marketing landing page.
 
 **San Francisco. The full meeting address is included only in the invitation email and its attached calendar file—not the page, MCP response, public calendar download or booking panel.**
 

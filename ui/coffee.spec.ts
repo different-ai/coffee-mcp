@@ -135,22 +135,28 @@ test("email supplied by the agent books directly and hydrates the filled receipt
   await page.screenshot({ path: "docs/mcp-booked.png" });
 });
 
-test("copy and hover definition", async ({ page }) => {
+test("uses the real OpenWork logo, app branding and office invitation", async ({
+  page,
+}) => {
   await page.goto("/sf");
-  await expect(
-    page.getByText("Hey this is OpenWork.", { exact: true }),
-  ).toBeVisible();
-  await expect(page.locator("#stage")).toHaveClass(/scene-ready/, {
-    timeout: 40000,
-  });
-  await page.locator(".mean").hover();
-  await expect(page.locator("#mean-definition")).toHaveCSS("opacity", "1");
-  await expect(page.locator("#mean-definition")).toContainText(
-    "aka good coffee.",
+  await expect(page.locator(".wordmark")).toHaveText("OpenWork");
+  await expect(page.locator(".brand-logo")).toBeVisible();
+  expect(
+    await page
+      .locator(".brand-logo")
+      .evaluate(
+        (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+      ),
+  ).toBeTruthy();
+  await expect(page.locator(".brand-logo")).toHaveCSS("width", "20px");
+  await expect(page.locator("#submit")).toHaveCSS(
+    "background-color",
+    "rgb(1, 22, 39)",
   );
-  await expect(page.locator("#stage")).toHaveClass(/scene-ready/, {
-    timeout: 40000,
-  });
+  await expect(page.locator(".invitation")).toHaveText(
+    "Visit us at our office and get a free cup of some of the best coffee in SF.",
+  );
+  await expect(page.locator("#stage")).toHaveClass(/scene-ready/);
   await page.screenshot({ path: "docs/idle.png" });
 });
 

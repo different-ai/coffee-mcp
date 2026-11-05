@@ -1,0 +1,43 @@
+/* OpenWork light-theme tokens, copied from the app rather than approximated.
+ * Sources: apps/app/src/app/index.css (:root and body),
+ * apps/app/src/styles/colors.css (Radix slate), DESIGN.md V1–V4.
+ * Logo: apps/app/public/openwork-sidebar-mark.svg, unchanged.
+ */
+:root {
+  --slate-1: #fcfcfd;
+  --slate-2: #f9f9fb;
+  --slate-3: #f0f0f3;
+  --slate-4: #e8e8ec;
+  --slate-5: #e0e1e6;
+  --slate-6: #d9d9e0;
+  --slate-8: #b9bbc6;
+  --slate-9: #8b8d98;
+  --slate-11: #60646c;
+  --slate-12: #1c2024;
+  --dls-surface: var(--slate-1);
+  --dls-canvas: var(--slate-2);
+  --dls-accent: #011627;
+  --dls-accent-hover: #0a2540;
+  --dls-accent-fg: #ffffff;
+  --dls-text-primary: var(--slate-12);
+  --dls-text-secondary: var(--slate-11);
+  --dls-radius: 16px;
+  --radius: 0.45rem;
+  --dls-card-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  --background: var(--slate-1);
+  --foreground: var(--slate-12);
+  --muted-foreground: var(--slate-11);
+  --border: var(--slate-5);
+  --input: var(--slate-6);
+  --ring: var(--slate-8);
+  --destructive: #e5484d;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, system-ui, ui-sans-serif, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --map-land: var(--slate-2);
+  --map-building: var(--slate-4);
+  --map-building-line: var(--slate-5);
+  --map-road: var(--slate-1);
+  --map-label: var(--slate-11);
+}

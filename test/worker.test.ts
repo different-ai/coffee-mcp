@@ -215,10 +215,11 @@ describe("web routes", () => {
     );
     expect(res.headers.get("content-type")).toContain("text/html");
     const page = await res.text();
-    expect(page).toContain("Hey this is OpenWork.");
+    expect(page).toContain("Coffee at OpenWork");
     expect(page).not.toContain("700 Alabama St");
     expect(page).toContain("Address in your email.");
-    expect(page).toContain("aka good coffee.");
+    expect(page.replace(/\s+/g, " ")).toContain("Visit us at our office and get a free cup of some of the best coffee in SF.");
+    expect(page).toContain("brand-logo");
   });
 
   it("redirects / to /sf", async () => {

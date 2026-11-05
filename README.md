@@ -1,6 +1,8 @@
 # Coffee with OpenWork / SF
 
-**Hey this is OpenWork. We make some mean coffee. Come get coffee with us.**
+**Visit us at our office and get a free cup of some of the best coffee in SF.**
+
+Uses the real OpenWork sidebar logo and the app's system font, Radix slate neutrals, navy accent, radii and card shadow. Token provenance is documented in `app/brand.css`.
 
 Live: **https://coffee.openworklabs.com/sf** · San Francisco. The meeting address is sent by email, not shown in the page or MCP booking response.
 
