@@ -72,6 +72,12 @@ body.standalone .stage {
   cursor: grab;
   touch-action: pan-y;
 }
+#scene svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: center;
+}
 #scene:active {
   cursor: grabbing;
 }

@@ -1,5 +1,12 @@
 # Third-party notices
 
+## OpenStreetMap neighborhood map
+
+Map data © OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0. Attribution and license: https://www.openstreetmap.org/copyright
+
+`app/neighborhood.svg` is derived cartography from a public OSM API extract (Mission District, bbox -122.422,37.757,-122.407,37.770). Roads and building footprints are simplified for this display. The extraction URL and regeneration procedure are in `scripts/build-neighborhood-map.py`. The visible map footer includes attribution. No exact meeting-location marker is present.
+
+
 `app/gaussian.ts` adapts the SPZ v2/v3 decoding algorithms in
 [nianticlabs/spz](https://github.com/nianticlabs/spz) (`src/cc/load-spz.cc`,
 `src/cc/splat-utils.h`) and the Gaussian covariance projection / quad rendering

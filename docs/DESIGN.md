@@ -26,21 +26,20 @@ The standalone web form retains email verification. Confirming on GET is forbidd
 
 A small utility over the real neighborhood, not a marketing landing page:
 
-- Light, reconstruction-derived street wireframe, with slow drift and optional drag-to-look. Three world-anchored crops of the actual source image float within the sketch.
-- Small OpenWork header. One compact, bottom-centered panel holds the invitation, address and email field.
+- Simple top-down neighborhood map, built from real OpenStreetMap roads and building footprints. Drag to explore; no exact meeting-location pin.
+- Small OpenWork header. One compact, bottom-centered panel holds the invitation and email field. It says the address will arrive by email.
 - System sans-serif, restrained green/gray, soft off-white panel. No oversized headings, badges, italics, stamps or faux paper receipt.
-- The booked state uses the same compact panel with plain date, address and calendar buttons.
+- The booked state uses the same compact panel with a date and calendar buttons. The precise address remains in the email.
 - Setup instructions are collapsed behind one “Add to your agent” row, not a second landing-page section.
 - On phones, the field and button stack. Reduced-motion disables camera drift and transitions.
 
-## The world
+## The map
 
-The scene is the user's public Marble world, **Urban Intersection in San Francisco**:
-https://marble.worldlabs.ai/world/65f3661f-de05-44f3-a9b8-7fcaa142d0ec
+`app/neighborhood.svg` is a bundled, top-down map of the Mission District: 2,311 real building footprints and 391 road segments, derived from OpenStreetMap. It is a neighborhood overview, not a map to the exact meeting address. There is no location pin. Attribution stays visible in the footer.
 
-`app/world.ts` holds its public 150k-splat export URL, source image and scale metadata. `app/street.ts` samples actual Gaussian centers into a depth grid and connects nearby samples, rejecting depth jumps. This is a wireframe approximation, not a collider or surveyed building mesh. Three photo planes use crops of one Google Maps source image, with attribution—not three invented captures. No World Labs API key is required at runtime or stored in this repository. The scene becomes ready only after the wireframe and photographs have actually rendered.
+`scripts/build-neighborhood-map.py` regenerates the SVG from the documented public OSM API extract. The app needs no external tiles, credentials, WebGL, WASM or network access for its map. MCP Apps declare no external resource/connect origins.
 
-MCP Apps declare only the World Labs CDN origin in their CSP. Do not weaken the host sandbox or enable eval to render the scene.
+The prior World Labs reconstruction and renderers remain in source for reference but are no longer loaded.
 
 ## Scheduling limitations
 

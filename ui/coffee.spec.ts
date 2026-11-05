@@ -80,7 +80,7 @@ async function host(page: Page, request: APIRequestContext, result: unknown) {
   return page.frameLocator("iframe");
 }
 
-test("the street skeleton and real photo crops render under MCP Apps CSP; empty call needs no interaction", async ({
+test("the top-down neighborhood map renders under MCP Apps CSP; empty call needs no interaction", async ({
   page,
   request,
 }) => {
@@ -97,8 +97,10 @@ test("the street skeleton and real photo crops render under MCP Apps CSP; empty 
   await expect(frame.locator("#stage")).toHaveClass(/scene-ready/, {
     timeout: 40000,
   });
+  await expect(frame.locator("#scene svg")).toBeVisible();
+  await expect(frame.locator("#scene")).not.toContainText("700 Alabama");
   await expect(frame.locator("#scene-status")).toContainText(
-    "3D scene · Drag to look around",
+    "Mission District · Drag to explore",
   );
   expect(errors).toEqual([]);
   await page.screenshot({ path: "docs/mcp-empty.png" });
@@ -123,7 +125,9 @@ test("email supplied by the agent books directly and hydrates the filled receipt
     result.structuredContent.when,
   );
   await expect(frame.locator("#receipt")).not.toContainText("700 Alabama");
-  await expect(frame.locator("#receipt")).toContainText("Address in your email.");
+  await expect(frame.locator("#receipt")).toContainText(
+    "Address in your email.",
+  );
   await expect(frame.locator("#receipt")).not.toContainText("Tap the link");
   await expect(frame.locator("#stage")).toHaveClass(/scene-ready/, {
     timeout: 40000,

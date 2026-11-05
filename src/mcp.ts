@@ -92,7 +92,7 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
     server,
     "Coffee in SF",
     VIEW_URI,
-    { description: "A 3D San Francisco coffee card visualizing the booking returned by grab_coffee or coffee_status." },
+    { description: "A top-down San Francisco neighborhood map with the booking returned by grab_coffee or coffee_status. The exact meeting address is sent only by email." },
     async () => ({
       contents: [
         {
@@ -103,8 +103,8 @@ export function buildServer(env: Env, ctx: { ip?: string }): McpServer {
             ui: {
               prefersBorder: false,
               csp: {
-                connectDomains: ["https://cdn.marble.worldlabs.ai"],
-                resourceDomains: ["https://cdn.marble.worldlabs.ai"],
+                connectDomains: [],
+                resourceDomains: [],
               },
             },
           },

@@ -51,8 +51,8 @@ describe("MCP over HTTP at /sf", () => {
     const read = await rpc(env, "resources/read", { uri: VIEW_URI });
     const content = read.result.contents[0];
     expect(content.mimeType).toBe("text/html;profile=mcp-app");
-    expect(content._meta.ui.csp.connectDomains).toEqual(["https://cdn.marble.worldlabs.ai"]);
-    expect(content._meta.ui.csp.resourceDomains).toEqual(["https://cdn.marble.worldlabs.ai"]);
+    expect(content._meta.ui.csp.connectDomains).toEqual([]);
+    expect(content._meta.ui.csp.resourceDomains).toEqual([]);
     expect(content.text).toContain("Put your email address");
     expect(content.text).not.toMatch(/<script[^>]+src=/); // everything inlined
   });

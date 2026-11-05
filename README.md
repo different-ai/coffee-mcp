@@ -4,7 +4,7 @@
 
 Live: **https://coffee.openworklabs.com/sf** · San Francisco. The meeting address is sent by email, not shown in the page or MCP booking response.
 
-Add one URL to your agent. Tell it your email, and say **“grab a coffee with OpenWork.”** It books and sends an invite. No forms or confirmation clicks required. The optional MCP App shows your booking over a light street wireframe derived from the SF reconstruction, with floating crops of the actual source image.
+Add one URL to your agent. Tell it your email, and say **“grab a coffee with OpenWork.”** It books and sends an invite. No forms or confirmation clicks required. The optional MCP App shows your booking over a simple top-down map of San Francisco's Mission District. The precise meeting address is sent only in the invitation email.
 
 ![The invitation](docs/idle.png)
 
@@ -37,9 +37,9 @@ The view consumes the tool's `structuredContent`. No click, hidden browser workf
 
 ## Real neighborhood, not a mock
 
-The environment comes from the public user-created Marble world [Urban Intersection in San Francisco](https://marble.worldlabs.ai/world/65f3661f-de05-44f3-a9b8-7fcaa142d0ec). `app/world.ts` points at its public 150k-splat export and source image. `app/street.ts` derives an approximate wireframe from adjacent depth samples and places three crops of that single source image in 3D. These are not three separate photographs, and the wireframe is not a surveyed building mesh. Google Maps source attribution remains visible. No World Labs API credential is included in the browser, Worker or repository.
+The current view is a top-down neighborhood map from OpenStreetMap data: real road geometry and building footprints, no precise meeting-location pin. `app/neighborhood.svg` is bundled into the MCP App, so there are no tile requests, API keys or external resources at runtime. The footer credits © OpenStreetMap contributors. `scripts/build-neighborhood-map.py` regenerates it from the documented OSM extract. The earlier World Labs renderer remains in source but is no longer loaded.
 
-The 3D scene is optional: failure to load it never blocks booking. Reduced-motion stops the camera drift and UI animations. **Mean coffee** reveals **aka good coffee.** on hover or keyboard focus.
+The map is optional and independent of booking. Drag to explore the neighborhood; nothing animates or moves on its own. **Mean coffee** reveals **aka good coffee.** on hover or keyboard focus.
 
 Full experience and limitations: [docs/DESIGN.md](docs/DESIGN.md).
 
@@ -52,7 +52,7 @@ pnpm dev                         # http://localhost:8787/sf
 pnpm test                        # unit + real MCP-over-HTTP and web routing
 pnpm typecheck
 pnpm exec playwright install chromium
-pnpm test:ui                     # real splat + MCP Apps CSP + filled receipt, no clicks
+pnpm test:ui                     # bundled map + MCP Apps CSP + filled booking, no clicks
 ```
 
 To use system Chrome for browser tests on macOS:
@@ -61,7 +61,7 @@ To use system Chrome for browser tests on macOS:
 COFFEE_CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" pnpm test:ui
 ```
 
-Browser tests use the local Workers email simulator, never real recipients. They implement a small MCP Apps test host with the same restrictive CSP as OpenWork, so a renderer that only works outside chat doesn't pass.
+Browser tests use the local Workers email simulator, never real recipients. They implement a small MCP Apps test host with the same restrictive CSP as OpenWork and verify the bundled map and no-click booking state inside it.
 
 ## Deploy on Cloudflare
 

@@ -2,7 +2,6 @@ import { App } from "@modelcontextprotocol/ext-apps";
 import { isCoffeeResult, type CoffeeResult } from "../src/shared";
 import { renderInstall } from "./install";
 import { createScene } from "./scene";
-import { WORLD } from "./world";
 
 const $ = <T extends HTMLElement>(sel: string): T => {
   const el = document.querySelector<T>(sel);
@@ -24,16 +23,16 @@ const reducedMotion = window.matchMedia(
 ).matches;
 const stage = $<HTMLElement>("#stage");
 const status = $<HTMLElement>("#scene-status");
-$<HTMLElement>("#world-photo").style.backgroundImage = `url("${WORLD.image}")`;
-$<HTMLAnchorElement>("#world-credit").href = WORLD.page;
-const scene = createScene($<HTMLCanvasElement>("#scene"), {
+$<HTMLAnchorElement>("#world-credit").href =
+  "https://www.openstreetmap.org/copyright";
+const scene = createScene($<HTMLDivElement>("#scene"), {
   reducedMotion,
   onStatus(value) {
     stage.classList.toggle("scene-ready", value === "ready");
     status.textContent = {
-      loading: "Loading neighborhood…",
-      ready: "3D scene · Drag to look around",
-      fallback: "Neighborhood preview",
+      loading: "Loading map…",
+      ready: "Mission District · Drag to explore",
+      fallback: "Neighborhood map",
     }[value];
   },
 });
